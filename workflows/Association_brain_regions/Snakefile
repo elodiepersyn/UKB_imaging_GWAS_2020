@@ -1,0 +1,81 @@
+#!/usr/bin/env python
+
+import os
+import pandas as pd
+configfile: "config_MD.yaml"
+
+# Input
+DATA_DIR= config["DATA_DIR"]
+PROC_DATA_DIR=config["PROC_DATA_DIR"]
+TRAIT=config["TRAIT"]
+FIELDS=config["FIELDS"]
+fields=pd.read_table(FIELDS)
+TRAITS= [item for sublist in fields[["traits"]].values for item in sublist]
+
+# Programs
+plink2 = config["plink2"]
+
+# Result directory
+RESULTS_DIR = config["RESULTS_DIR"]
+
+# Main rule
+rule all:
+	input:
+		expand(RESULTS_DIR + "Association_{trait}_ALLchr.{trait}.glm.linear" , trait=TRAITS)
+
+# Association
+rule GWAS:
+	input:
+		bgen = expand(PROC_DATA_DIR + "UKB_imaging_chr{chr}_v3.bgen", chr=range(1,23)),
+		sample = expand(PROC_DATA_DIR + "UKB_imaging_chr{chr}_v3.sample", chr=range(1,23)),
+		covar =  PROC_DATA_DIR + "covar/" + TRAIT + "_covar.txt",
+		variants = config["SNPs"]
+	output:
+		assoc = RESULTS_DIR + "Association_{trait}_ALLchr.{trait}.glm.linear" 
+	params:
+		plink = plink2,
+		trait = "{trait}", 
+		proc_data_dir = PROC_DATA_DIR,
+		out_dir = RESULTS_DIR
+	shell:
+		"""
+		awk '{{print $1,$2}}' {input.covar} > {input.covar}.{wildcards.trait}.sample		
+		for chr in 2 5 6 10 16 17 20;
+		do
+		{params.plink} \
+			--bgen {params.proc_data_dir}/UKB_imaging_chr${{chr}}_v3.bgen \
+			--sample {params.proc_data_dir}/UKB_imaging_chr${{chr}}_v3.sample \
+			--keep {input.covar}.{wildcards.trait}.sample \
+			--extract {input.variants}\
+			--pheno {input.covar}\
+			--pheno-name {wildcards.trait} \
+			--covar {input.covar}\
+			--covar-name Sex,AgeMRI,Batch_1,UKBcentre,PC_1-PC_10,MeanrfMRI,MeantfMRI \
+			--glm hide-covar cols=+a1freq,+a1freqcc,+machr2,+ax \
+			--maf 0.01 \
+			--hwe 1e-10 \
+			--out {params.out_dir}/GWAS_{params.trait}_chr${{chr}};
+		done
+		
+		count=0
+        for chr in 2 5 6 10 16 17 20;
+        do 
+		f="{params.out_dir}/GWAS_{params.trait}_chr${{chr}}.{params.trait}.glm.linear"
+        
+		count=$[$count +1];
+        if [ $count -eq 1 ] ;
+        then
+        cat $f  > temp_{params.trait};
+        else
+        cat $f | tail -n +2 >> temp_{params.trait} ;
+        fi;
+        done        
+        
+        sed -re '1 s/^#//' temp_{params.trait} > {output}
+        rm temp_{params.trait}
+		
+		rm {params.out_dir}/GWAS_{params.trait}_chr*
+		"""
+
+
+

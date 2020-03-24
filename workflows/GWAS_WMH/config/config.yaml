@@ -1,0 +1,41 @@
+# This is a configuration file for the Snakemake pipeline
+
+# Softwares
+plink2: ~/PROGRAMS/plink2_linux_avx2_20190102/plink2
+qctool: ~/PROGRAMS/qctool/build/release/qctool_v2.0-rc9
+plink1_9: ~/bioinformatics/plink/1.90b3.31/plink
+metal: ~/bioinformatics/metal/2011-03-25/metal
+
+# Name of the trait
+TRAIT: logWMHnorm
+
+# Working directories
+DATA_DIR: ~/data/UKB_imaging_15.10.2018/
+PROC_DATA_DIR: ~/data/UKB_imaging_15.10.2018_processed/
+RESULTS_DIR: ~/results/results_GWAS_imaging_WMH_15.10.2018/
+
+# UK biobank phenotype data
+rootname_enc: ukbxxxxx
+
+#  UK Biobank genotype data and QC information
+Relatedness:
+    file: ~/data/UKB_imaging_15.10.2018/ukb36509_rel_s488295.dat
+sampleQC:
+    file: ~/datasets/ukbiobank/June2017/Imputed/ukb_sqc_v2.txt
+fam:
+    file: ~/data/UKB_imaging_15.10.2018/ukb36509_cal_chr1_v2_s488295.fam
+imputed:
+    bgen: ~/datasets/ukbiobank/June2017/Imputed/ukb_imp_chr{chr}_v3.bgen
+    sample: ~/data/UKB_imaging_15.10.2018/ukb36509_imp_chr{chr}_v3_s487327.sample
+    mfi: ~/datasets/ukbiobank/June2017/Imputed/ukb_mfi_chr{chr}_v3.txt 
+genotyped:
+    bim: ~/datasets/ukbiobank/June2017/Genotypes/ukb_binary_v2.bim
+highLDregions: ./scripts/shell/highLDregions_chr17inversion_4bim_b37.awk
+
+# Meta-analysis
+metalfile: ./scripts/params/MetaAnalysis/metalfile
+metalfile_eur: ./scripts/params/MetaAnalysis/metalfile_eur2
+
+# Reference dataset for clumping association results
+Clumping: 
+    ref: ~/data/UKBiobank_ref/REF_nodup/UKBiobank_ref_chr{chr}_3

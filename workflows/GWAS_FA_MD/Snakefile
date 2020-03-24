@@ -1,0 +1,491 @@
+#!/usr/bin/env python
+
+import os
+import pandas as pd
+configfile: "config/config_FA.yaml"
+
+# Input
+DATA_DIR= config["DATA_DIR"]
+PROC_DATA_DIR=config["PROC_DATA_DIR"]
+TRAIT=config["TRAIT"]
+FIELDS=config["FIELDS"]
+fields=pd.read_table(FIELDS)
+#TRAITS= [item for sublist in fields[["traits"]].values for item in sublist]
+#TRAITS.append("PC1_trait")
+#TRAITS.append("PC2_trait")
+TRAITS=["PC1_trait","PC2_trait"]
+FIELD_FILTER=config["FIELD_FILTER"] #"f.25079.2.0"
+
+# Programs
+plink2 = config["plink2"]
+qctool = config["qctool"]
+plink1_9 = config["plink1_9"]
+# module load R
+#	R - data.table
+#	R - dplyr
+#	R - ukbtools
+#	R - mice
+#	R - yaml
+#	R - FactoMineR
+
+# Result directory
+RESULTS_DIR = config["RESULTS_DIR"]
+
+# Main rule
+rule all:
+	input:
+		#evec = PROC_DATA_DIR + "pop_structure/smartpca/UKB_imaging_ALLchr_v3_pruned_pca.evec"
+#		expand(RESULTS_DIR + "/GWAS_{trait}_ALLchr.{trait}_info.glm.linear", trait=TRAITS),
+		expand(RESULTS_DIR + "/Regional_Plots_{trait}/listRegionalPlots.txt", trait=TRAITS)
+
+# Select rows where the field is not equal to NA
+rule ReduceTabData:
+	input:
+		full_tab = DATA_DIR + config["rootname_enc"] + ".tab"
+	output:
+		trait_tab = PROC_DATA_DIR + "/sub_data/" +  config["rootname_enc"] + "_" + TRAIT + ".tab"
+	params:
+		field = FIELD_FILTER
+	shell:
+		"""
+		awk -v col={params.field} 'BEGIN {{FS = \"\\t\";OFS = \"\\t\"}} NR==1{{for(i=1;i<=NF;i++){{if($i==col){{c=i;break}}}} print $0}} NR>1{{if($c!=\"NA\")print $0}}' {input.full_tab} > {output.trait_tab}
+		"""
+
+# Select individuals based on phenotypes
+
+rule SampleSelection:
+	input:
+		full_html = DATA_DIR + config["rootname_enc"] + ".html",
+		full_r = DATA_DIR + config["rootname_enc"] + ".r",
+		trait_tab = PROC_DATA_DIR + "/sub_data/" + config["rootname_enc"] + "_" + TRAIT + ".tab",
+		fields=FIELDS
+	output:
+		trait_samples = PROC_DATA_DIR + "/samples/" + config["rootname_enc"] + "_" + TRAIT + ".samples.txt",
+		obj = PROC_DATA_DIR + "/sub_data/res_ukb.rda"
+	params:
+		data_dir = DATA_DIR,
+		proc_data_dir = PROC_DATA_DIR,
+		rootname = config["rootname_enc"],
+		trait = TRAIT
+	shell:
+		"R -q --vanilla --args {params.data_dir} {params.proc_data_dir} {params.rootname} {params.trait} {input.fields}< scripts/R/SampleSelection.R"
+
+# QC
+
+rule SampleQC:
+	input:
+		trait_samples =  PROC_DATA_DIR + "/samples/" + config["rootname_enc"] + "_" + TRAIT + ".samples.txt",
+		relatedness = config["Relatedness"]["file"],
+		QC = config["sampleQC"]["file"],
+		fam =  config["fam"]["file"]
+	output:
+		summary_removed_samples = PROC_DATA_DIR + "/samples/summarytab_removedsamples_" + TRAIT + ".txt",
+		included_samples = PROC_DATA_DIR + "/samples/extractedsamples_" + TRAIT + ".txt",
+		excluded_samples = PROC_DATA_DIR + "/samples/removedsamples_" + TRAIT + ".txt",
+		fig_pca = PROC_DATA_DIR + "/pop_structure/plot_PC_" + TRAIT + "_keptindividuals.png",
+		fig_pca2 = PROC_DATA_DIR + "/pop_structure/plot_PC_" + TRAIT + "_keptindividuals2.png"
+	params:
+		rootname =  config["rootname_enc"],
+		trait = TRAIT,
+		proc_data_dir = PROC_DATA_DIR 
+	shell:
+		"R -q --vanilla --args {params.rootname} {params.trait} {input.relatedness} {input.QC} {input.fam} {params.proc_data_dir} < scripts/R/SampleQC.R "
+
+rule VariantQC:
+	input:
+		variant_info=config["imputed"]["mfi"]
+	output:
+		included_variants = PROC_DATA_DIR + "/variants/ukb_mfi_chr{chr}_v3_MAF0001_INFO5.txt"	
+	shell:
+		"""
+		awk '{{if ($6>=0.0001 && $8>=0.5) print $2;}}' {input} > {output}
+		"""
+
+rule QCfiltering_1:
+	input:
+		bgen = config["imputed"]["bgen"],
+		sample = config["imputed"]["sample"],
+		included_variants = PROC_DATA_DIR + "/variants/ukb_mfi_chr{chr}_v3_MAF0001_INFO5.txt" ,
+		included_samples = PROC_DATA_DIR + "/samples/extractedsamples_" + TRAIT + ".txt"
+	output:
+		bgen = expand(PROC_DATA_DIR + "UKB_imaging_chr{{chr}}_v3.{ext}", ext=["bgen", "sample"])
+	params:
+		proc_data_dir =  PROC_DATA_DIR, 
+		qctool = qctool
+	shell:
+		"""
+		{params.qctool} \
+		-g {input.bgen} \
+		-s {input.sample} \
+		-incl-samples {input.included_samples} \
+		-incl-rsids {input.included_variants} \
+		-og {params.proc_data_dir}/UKB_imaging_chr{wildcards.chr}_v3.bgen \
+		-os {params.proc_data_dir}/UKB_imaging_chr{wildcards.chr}_v3.sample
+		"""
+
+# PRUNING AND PCA
+rule List_genotyped_nolongrangeLD_SNPs:
+	input:
+		genotyped = config["genotyped"]["bim"],
+		regions = config["highLDregions"]
+	output:
+		longrangeLD = PROC_DATA_DIR + "/variants/longrangeLD_variants.txt",
+		genotyped = PROC_DATA_DIR + "/variants/genotyped_variants.txt"
+	shell:
+		"""
+		cut -f 2 {input.genotyped} > {output.genotyped}
+		awk -f {input.regions} {input.genotyped} > {output.longrangeLD}
+		"""
+
+rule Extract_genotyped_nolongrangeLD_SNPs:
+	input:
+		genotyped = PROC_DATA_DIR + "/variants/genotyped_variants.txt",
+		longrangeLD = PROC_DATA_DIR + "/variants/longrangeLD_variants.txt",
+		bgen = PROC_DATA_DIR + "UKB_imaging_chr{chr}_v3.bgen",
+		sample = PROC_DATA_DIR + "UKB_imaging_chr{chr}_v3.sample" 
+	output:
+		bfiles = temp(expand(PROC_DATA_DIR + "/genotyped/UKB_imaging_chr{{chr}}_v3_genotyped_nolongrangeLD.{ext}", ext=["bed", "bim", "fam"])),
+	params:		
+		plink = plink2,
+		proc_data_dir = PROC_DATA_DIR
+	shell:
+		"""
+        {params.plink} \
+        --bgen {input.bgen} \
+        --sample {input.sample}  \
+        --extract {input.genotyped} \
+        --exclude {input.longrangeLD} \
+        --make-bed \
+		--out {params.proc_data_dir}/genotyped/UKB_imaging_chr{wildcards.chr}_v3_genotyped_nolongrangeLD
+		"""
+
+rule shortrange_Pruning:
+	input: 
+		bfiles = expand(PROC_DATA_DIR + "/genotyped/UKB_imaging_chr{{chr}}_v3_genotyped_nolongrangeLD.{ext}", ext=["bed", "bim", "fam"])
+	output:
+		prune_in =  temp(expand(PROC_DATA_DIR + "UKB_imaging_chr{{chr}}_v3.{ext}", ext=["prune.in", "prune.out", "log"]))
+	params:
+		plink = plink1_9 ,
+		proc_data_dir = PROC_DATA_DIR
+	shell:
+		" {params.plink} \
+		--bfile {params.proc_data_dir}/genotyped/UKB_imaging_chr{wildcards.chr}_v3_genotyped_nolongrangeLD \
+		--allow-no-sex \
+		--maf 0.05 \
+		--indep-pairwise 1000 50 0.05 \
+		--out {params.proc_data_dir}/UKB_imaging_chr{wildcards.chr}_v3 "
+
+rule ExtractPrunedVariants:
+	input:
+		bfiles = expand(PROC_DATA_DIR + "/genotyped/UKB_imaging_chr{chr}_v3_genotyped_nolongrangeLD.{ext}", chr=range(1,23), ext=["bed", "bim", "fam"]),
+		prune_in =  expand(PROC_DATA_DIR + "UKB_imaging_chr{chr}_v3.{ext}", chr=range(1,23), ext=["prune.in", "prune.out", "log"])
+	output:
+		pruned_data= temp(expand(PROC_DATA_DIR + "/pruned/UKB_imaging_chr{chr}_v3_pruned.{ext}", chr=range(1,23), ext=["bed", "bim", "fam"]))
+	params:
+		plink = plink1_9,
+		proc_data_dir = PROC_DATA_DIR
+	shell:
+		"\
+        for i in `seq 1 22`; \
+        do \
+        {params.plink} \
+        --bfile {params.proc_data_dir}/genotyped/UKB_imaging_chr${{i}}_v3_genotyped_nolongrangeLD \
+		--extract {params.proc_data_dir}/UKB_imaging_chr${{i}}_v3.prune.in \
+		--allow-no-sex \
+		--make-bed \
+        --out {params.proc_data_dir}/pruned/UKB_imaging_chr${{i}}_v3_pruned \
+        ; \
+        done\
+        "
+
+rule MergePrunedData:
+	input:
+		pruned_data= expand(PROC_DATA_DIR + "/pruned/UKB_imaging_chr{chr}_v3_pruned.{ext}", chr=range(1,23), ext=["bed", "bim", "fam"])
+	output:
+		pruned_data =  temp(expand(PROC_DATA_DIR + "/pruned/UKB_imaging_ALLchr_v3_pruned.{ext}",  ext=["bed", "bim", "fam"]))
+	params:
+		plink = plink1_9 ,
+		proc_data_dir = PROC_DATA_DIR
+	shell:
+		"""
+		# Merge attempt 1
+		for i in `seq 1 22`; do echo {params.proc_data_dir}/pruned/UKB_imaging_chr${{i}}_v3_pruned ; done > {params.proc_data_dir}/pruned/merge_list.txt 
+		set +e  
+		{params.plink} \
+		--allow-no-sex \
+		--merge-list {params.proc_data_dir}/pruned/merge_list.txt \
+		--make-bed \
+		--out {params.proc_data_dir}/pruned/UKB_imaging_ALLchr_v3_pruned 
+				
+		# Merge attempt 2
+		set -e
+		for i in `seq 1 22`; \
+		do \
+		{params.plink} \
+		--bfile  {params.proc_data_dir}/pruned/UKB_imaging_chr${{i}}_v3_pruned \
+		--allow-no-sex \
+		--exclude {params.proc_data_dir}/pruned/UKB_imaging_ALLchr_v3_pruned-merge.missnp \
+		--make-bed \
+		--out {params.proc_data_dir}/pruned/UKB_imaging_chr${{i}}_v3_pruned2 \
+		; \
+		done        
+		
+		for i in `seq 1 22`; do echo {params.proc_data_dir}/pruned/UKB_imaging_chr${{i}}_v3_pruned2 ; done > {params.proc_data_dir}/pruned/merge_list.txt 
+		
+		{params.plink} \
+		--allow-no-sex \
+		--merge-list {params.proc_data_dir}/pruned/merge_list.txt \
+		--make-bed \
+		--out {params.proc_data_dir}/pruned/UKB_imaging_ALLchr_v3_pruned 
+		
+		rm {params.proc_data_dir}/pruned/merge_list.txt
+		rm {params.proc_data_dir}/pruned/UKB_imaging_chr{{1..22}}_v3_pruned2.bed
+		rm {params.proc_data_dir}/pruned/UKB_imaging_chr{{1..22}}_v3_pruned2.bim
+		rm {params.proc_data_dir}/pruned/UKB_imaging_chr{{1..22}}_v3_pruned2.fam
+		"""
+	
+rule RemoveIndels:
+	input:
+		pruned_data = expand(PROC_DATA_DIR + "/pruned/UKB_imaging_ALLchr_v3_pruned.{ext}",  ext=["bed", "bim", "fam"])
+	output:
+		pruned_data = expand(PROC_DATA_DIR + "/pruned/UKB_imaging_ALLchr_v3_pruned_noindels.{ext}",  ext=["bed", "bim", "fam", "ind"])
+	params:
+		plink = plink1_9,
+		proc_data_dir = PROC_DATA_DIR
+	shell:
+		"""
+		{params.plink} \
+		--bfile {params.proc_data_dir}/pruned/UKB_imaging_ALLchr_v3_pruned \
+		--snps-only no-DI \
+		--make-bed \
+		--out {params.proc_data_dir}/pruned/UKB_imaging_ALLchr_v3_pruned_noindels
+		
+		cut -f 2,5-6 {params.proc_data_dir}/pruned/UKB_imaging_ALLchr_v3_pruned_noindels.fam > {params.proc_data_dir}/pruned/UKB_imaging_ALLchr_v3_pruned_noindels.ind
+		"""
+
+rule PCA:
+	input:
+		pruned_data = expand(PROC_DATA_DIR + "/pruned/UKB_imaging_ALLchr_v3_pruned_noindels.{ext}", ext=["bed", "bim", "fam", "ind"]),
+	output:
+		evec = PROC_DATA_DIR + "pop_structure/smartpca/UKB_imaging_ALLchr_v3_pruned_pca.eigenvec"
+	conda:
+		"envs/pca_rm.yml"
+	params:
+		plink2 = plink2,
+		bfile = PROC_DATA_DIR + "/pruned/UKB_imaging_ALLchr_v3_pruned_noindels",
+		out = PROC_DATA_DIR + "pop_structure/smartpca/UKB_imaging_ALLchr_v3_pruned_pca",
+		npc_rm = 10 ,
+		nsd_rm = 8
+	shell:
+		"""
+		python scripts/python/pc_outlier_rm.py \
+        --plink2 {params.plink2} \
+        --bfile {params.bfile} \
+        --out {params.out} \
+        --npc-rm {params.npc_rm} \
+        --nsd-rm {params.nsd_rm}
+        """
+
+# Covariates
+rule Covariates:
+	input:
+		obj = PROC_DATA_DIR + "/sub_data/res_ukb.rda",
+		QC = config["sampleQC"]["file"],
+		fam =  config["fam"]["file"],
+		evec = PROC_DATA_DIR + "pop_structure/smartpca/UKB_imaging_ALLchr_v3_pruned_pca.eigenvec",
+		fields = config["FIELDS"]
+	output:
+		covar =  PROC_DATA_DIR + "/covar/" + TRAIT + "_covar.txt" 
+	params:
+		trait = TRAIT ,
+		out_dir = PROC_DATA_DIR + "/covar/"
+	shell:
+		"R -q --vanilla --args {params.trait} {input.obj} {input.QC} {input.fam} {input.evec} {params.out_dir} {input.fields} < scripts/R/Covariates.R"
+
+# Association
+rule GWAS:
+	input:
+		bgen = expand(PROC_DATA_DIR + "UKB_imaging_chr{chr}_v3.bgen", chr=range(1,23)),
+		sample = expand(PROC_DATA_DIR + "UKB_imaging_chr{chr}_v3.sample", chr=range(1,23)),
+		covar =  PROC_DATA_DIR + "/covar/" + TRAIT + "_covar.txt"
+	output:
+		assoc = RESULTS_DIR + "/GWAS_{trait}_ALLchr.{trait}.glm.linear" 
+	params:
+		plink = plink2,
+		trait = "{trait}", 
+		proc_data_dir = PROC_DATA_DIR,
+		out_dir = RESULTS_DIR
+	shell:
+		"""
+		awk '{{print $1,$2}}' {input.covar} > {input.covar}.{wildcards.trait}.sample		
+
+		for chr in `seq 1 22`;
+		do
+		{params.plink} \
+			--bgen {params.proc_data_dir}/UKB_imaging_chr${{chr}}_v3.bgen \
+			--sample {params.proc_data_dir}/UKB_imaging_chr${{chr}}_v3.sample \
+			--keep {input.covar}.{wildcards.trait}.sample \
+			--pheno {input.covar}\
+			--pheno-name {wildcards.trait} \
+			--covar {input.covar}\
+			--covar-name Sex,AgeMRI,Batch_1,UKBcentre,PC_1-PC_10,MeanrfMRI,MeantfMRI \
+			--glm hide-covar cols=+a1freq,+a1freqcc,+machr2,+ax \
+			--maf 0.01 \
+			--hwe 1e-10 \
+			--out {params.out_dir}/GWAS_{params.trait}_chr${{chr}};
+		done
+		
+		count=0
+        for chr in `seq 1 22`;
+        do 
+		f="{params.out_dir}/GWAS_{params.trait}_chr${{chr}}.{params.trait}.glm.linear"
+        count=$[$count +1];
+        if [ $count -eq 1 ] ;
+        then
+        cat $f  > temp_{params.trait};
+        else
+        cat $f | tail -n +2 >> temp_{params.trait} ;
+        fi;
+        done        
+        
+        sed -re '1 s/^#//' temp_{params.trait} > {output}
+        rm temp_{params.trait}
+		
+		rm {params.out_dir}/GWAS_{params.trait}_chr*
+		"""
+
+# Add INFO score to the output file
+rule Check_INFO:
+	input:
+		glm = RESULTS_DIR + "/GWAS_{trait}_ALLchr.{trait}.glm.linear",
+		variant_info=expand(config["imputed"]["mfi"], chr=range(1,23))
+	output:
+		glm = RESULTS_DIR + "/GWAS_{trait}_ALLchr.{trait}_info.glm.linear"
+	shell:
+		"""
+		if [ -f {output.glm}.temp ]
+        then
+            rm {output.glm}.temp
+        fi
+
+        for infofile in {input.variant_info}
+        do
+        awk 'BEGIN {{OFS=FS="\\t"}}
+        NR==FNR {{
+            a[$2,$3,$4,$5]=$1 OFS $6 OFS $7 OFS $8 
+        }}
+        {{
+        if(($3,$2,$5,$4) in a){{
+            $16=a[$3,$2,$5,$4];
+            print     
+            }}
+        }}'  ${{infofile}} {input.glm} >> {output.glm}.temp
+        echo ${{infofile}}
+        done
+    
+        awk '{{if ($19>=0.5) print $0;}}' {output.glm}.temp > {output.glm}
+        sed  -i '1i CHROM\\tPOS\\tID\\tREF\\tALT\\tA1\\tAX\\tA1_FREQ\\tMACH_R2\\tTEST\\tOBS_CT\\tBETA\\tSE\\tT_STAT\\tP\\tSNP_id\\tMAFimp\\tAllele\\tINFO' {output.glm}
+
+        rm {output.glm}.temp
+        """
+
+# Clumping association results and Regional plots
+rule Clumping:
+	input:
+		glm = RESULTS_DIR + "/GWAS_{trait}_ALLchr.{trait}_info.glm.linear"
+	output:
+		glm_sig = temp(RESULTS_DIR + "/GWAS_{trait}_ALLchr.{trait}_info.glm.linear.clumped.sig"),
+		glm_clumped = RESULTS_DIR + "/GWAS_{trait}_ALLchr.{trait}_info.glm.linear.clumped"
+	params:
+		plink=plink1_9,
+		ref = expand(config["Clumping"]["ref"], chr=range(1,23))
+	shell:
+		"""
+		awk 'BEGIN{{OFS="\\t"}}{{
+        if ($15<=5e-8)
+            print $1"_"$2,$15
+        }}' {input.glm} > {output.glm_sig}
+        
+        sed  -i '1i SNP\\tP' {output.glm_sig}   
+
+		head {output.glm_sig}
+		
+		if [ -s {output.glm_sig} ]
+		then
+	
+        	chr=1
+        	for bfile in {params.ref}
+        	do
+        	{params.plink} \
+        	--bfile ${{bfile}} \
+        	--clump {output.glm_sig} \
+        	--clump-kb 1000 \
+        	--clump-r2 0.1 \
+        	--out {input.glm}.${{chr}}
+        	chr=$[$chr +1]
+        	done
+    
+        	count=0
+        	for f in {input.glm}*.clumped 
+        	do 
+        	count=$[$count +1]
+        	if [ $count -eq 1 ] 
+        	then 
+        	cat $f | head -n -2  > {output.glm_clumped}
+        	else
+        	cat $f | head -n -2 | sed '1d' >> {output.glm_clumped}
+        	fi
+			rm $f
+        	done
+		else
+			touch {output.glm_clumped}
+		fi
+
+        """
+
+rule Regional_Plots:
+	input:
+		glm = RESULTS_DIR + "/GWAS_{trait}_ALLchr.{trait}_info.glm.linear",
+		glm_clumped = RESULTS_DIR + "/GWAS_{trait}_ALLchr.{trait}_info.glm.linear.clumped"
+	output:
+		RESULTS_DIR + "/Regional_Plots_{trait}/listRegionalPlots.txt"
+	params:
+		plink = plink1_9,
+		ref = expand(config["Clumping"]["ref"], chr=range(1,23)),
+		out = RESULTS_DIR + "/Regional_Plots_{trait}/"
+	shell:
+		"""
+        awk 'BEGIN{{FS=OFS="\\t"}}{{print $1"_"$2,$0}}' {input.glm} > {input.glm}.chr.bp
+		ln=$(wc -l {input.glm_clumped} | awk '{{print $1}}')
+        i=2
+        while [[ $i -le $ln ]]
+        do
+            j=$((i-1))
+            SNP=$(awk 'NR=='f'{{print $3}}' f=$i {input.glm_clumped})
+            BP=$(awk 'NR=='f'{{print $4}}' f=$i {input.glm_clumped})
+            CHR=$(awk 'NR=='f'{{print $1}}' f=$i {input.glm_clumped})
+
+            let "BP_min=$BP-250000"
+            let "BP_max=$BP+250000"
+    
+            for file in {params.ref} 
+            do
+                if [[ $file == *"chr${{CHR}}_3" ]]
+                then
+                    reffile=$file
+                    echo 'found'
+                fi          
+            done    
+
+            {params.plink} --bfile ${{reffile}} --ld-snp $SNP --r2 --ld-window-kb 250 --ld-window-r2 0 --ld-window 99999 --out {params.out}/ld_out."$j" 
+            awk '{{if($2='f' && $3>'g' && $3<'h')print}}' f=$CHR g=$BP_min h=$BP_max {input.glm}.chr.bp > {params.out}/ld_out."$j" 
+            ((i=i+1))
+        
+            R -q --vanilla --args {params.out}/ld_out."$j" $CHR {params.out}/ld_out."$j".ld < scripts/R/regional_plot.R 
+
+        done
+		rm {input.glm}.chr.bp
+        echo 'all done' > {output}  
+        """
+
+

@@ -1,0 +1,50 @@
+#THIS SCRIPT EXECUTES AN ANALYSIS OF THREE WNH STUDIES in Europeans
+
+CUSTOMVARIABLE TotalSampleSize
+#AVERAGEFREQ ON
+
+# CHROM	POS	ID	REF	ALT	A1	TEST	OBS_CT	BETA	SE	T_STAT	P
+MARKER ID
+ALLELE A1 AX
+FREQ A1_FREQ
+ADDFILTER A1_FREQ > 0.01
+ADDFILTER A1_FREQ < 0.99
+EFFECT BETA
+PVALUE P
+LABEL TotalSampleSize as OBS_CT
+WEIGHT OBS_CT
+PROCESS ~/results/results_GWAS_imaging_WMH_15.10.2018/GWAS_logWMHnorm_ALLchr.logWMHnorm_info.glm.linear.chrpos
+
+REMOVEFILTERS
+
+# chr_position_Allele1_Allele2,MarkerName,SNPID,chr,position,Allele1,Allele2,Freq1,FreqSE,MinFreq,MaxFreq,Weight,Zscore,P.value,Direction,HetISq,HetChiSq,HetDf,HetPVal,X
+MARKER SNPID
+ALLELE Allele1 Allele2
+FREQ Freq1
+ADDFILTER Freq1 > 0.01
+ADDFILTER Freq1 < 0.99
+EFFECT Zscore
+PVALUE P.value
+LABEL TotalSampleSize as Weight
+WEIGHT Weight
+SEPARATOR  COMMAS
+PROCESS ~/data/EXTERNAL_DATA/dbGaP/dbGaP_CHARGE/WML_EUR_3.csv
+
+REMOVEFILTERS
+
+# CHR_BP_Allele1_Allele2 CHRPOS	SNP	CHR	BP	Allele1	Allele2	Effect	StdErr	P.value	HetPVal	TotalSampleSize
+MARKER SNP
+ALLELE Allele1 Allele2
+EFFECT Effect
+PVALUE P.value
+SEPARATOR  TAB
+LABEL TotalSampleSize as TotalSampleSize
+WEIGHT TotalSampleSize
+PROCESS ~/data/WMH_stroke_GWAS/WMH_EUR_310117.chr.bp.rsid_3
+
+# OUTPUT
+OUTFILE ~/results/results_GWAS_imaging_WMH_15.10.2018/metaGWAS_logWMHnorm_eur_ .tbl
+MINWEIGHT 16000
+ANALYZE HETEROGENEITY 
+
+QUIT

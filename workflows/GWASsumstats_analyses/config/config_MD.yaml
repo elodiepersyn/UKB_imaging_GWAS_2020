@@ -1,0 +1,74 @@
+OUT_DIR: ~/results/results_postGWAS_MD_15.10.2018
+
+GWASN: 17467
+
+TRAIT1:
+        label: PC1_MD
+        sumstats: ~/results/results_GWAS_imaging_MD_15.10.2018//GWAS_PC1_trait_ALLchr.PC1_trait.glm.linear
+
+TRAIT2:  ./genetic_correlation_traits.txt
+
+Programs:
+        munge_sumstats_py: ~/PROGRAMS/ldsc/munge_sumstats.py 
+        ldsc_py: ~/PROGRAMS/ldsc/ldsc.py
+        FUSION_assoc_test_R: ~/PROGRAMS/fusion_twas-master/FUSION.assoc_test.R
+        plink1_9: ~/bioinformatics/plink/1.90b3.31/plink
+        magma: ~/bioinformatics/magma/v1.06b/bin/magma
+
+Munge_TRAIT1_Data:
+        merge_alleles: ~/data/EXTERNAL_DATA/LDSCORE/w_hm3.snplist
+        sumstat: BETA,0
+        N_col: OBS_CT
+        snp: ID
+        A2: REF
+
+Heritability:
+        ref_ld_chr: ~/data/EXTERNAL_DATA/LDSCORE/eur_w_ld_chr/
+        w_ld_chr: ~/data/EXTERNAL_DATA/LDSCORE/eur_w_ld_chr/
+
+Genetic_Correlation_RG:
+        ref_ld_chr: ~/data/EXTERNAL_DATA/LDSCORE/eur_w_ld_chr/
+        w_ld_chr: ~/data/EXTERNAL_DATA/LDSCORE/eur_w_ld_chr/
+
+Baseline_2015:
+        ref_ld_chr: ~/data/EXTERNAL_DATA/LDSCORE/baseline/baseline.
+        w_ld_chr: ~/data/EXTERNAL_DATA/LDSCORE/weights_hm3_no_hla/weights.
+        frqfile_chr: ~/data/EXTERNAL_DATA/LDSCORE/1000G_frq/1000G.mac5eur.
+
+Cell_Type_Group_Analysis_2015:
+        ref_ld_chr: ~/data/EXTERNAL_DATA/LDSCORE/cell_type_groups/{group}.,~/data/EXTERNAL_DATA/LDSCORE/baseline/baseline.
+        w_ld_chr: ~/data/EXTERNAL_DATA/LDSCORE/weights_hm3_no_hla/weights.
+        frqfile_chr: ~/data/EXTERNAL_DATA/LDSCORE/1000G_frq/1000G.mac5eur.  
+
+Correct_CTS_file:
+        cts_file: ~/data/EXTERNAL_DATA/LDSCORE/LDSC_SEG_ldscores/{cts_name}.ldcts
+        cts_file2: ~/data/EXTERNAL_DATA/LDSCORE/LDSC_SEG_ldscores/{cts_name}2.ldcts
+        cts_dir: ~/data/EXTERNAL_DATA/LDSCORE/LDSC_SEG_ldscores/
+
+Cell_Type_Specific_Analysis_2017:
+        ref_ld_chr: ~/data/EXTERNAL_DATA/LDSCORE/LDSC_SEG_ldscores/{cts_name}/{cts_name}.control.,~/data/EXTERNAL_DATA/LDSCORE/LDSC_SEG_ldscores/1000G_EUR_Phase3_baseline/baseline.
+        w_ld_chr: ~/data/EXTERNAL_DATA/LDSCORE/weights_hm3_no_hla/weights.
+
+FUSION:
+    Studies:
+        weights: ~/data/EXTERNAL_DATA/FUSION/{tissue}/{tissue}.pos
+        weights_dir: ~/data/EXTERNAL_DATA/FUSION/{tissue}
+        CMC_BRAIN_RNASEQ: ~/data/EXTERNAL_DATA/FUSION/CMC.BRAIN.RNASEQ/CMC.BRAIN.RNASEQ.pos.paneln
+        CMC_BRAIN_RNASEQ_SPLICING: ~/data/EXTERNAL_DATA/FUSION/CMC.BRAIN.RNASEQ_SPLICING/CMC.BRAIN.RNASEQ_SPLICING.pos.paneln
+        METSIM_ADIPOSE_RNASEQ: ~/data/EXTERNAL_DATA/FUSION/METSIM.ADIPOSE.RNASEQ/METSIM.ADIPOSE.RNASEQ.pos.paneln
+        NTR_BLOOD_RNAARR: ~/data/EXTERNAL_DATA/FUSION/NTR.BLOOD.RNAARR/NTR.BLOOD.RNAARR.pos.paneln
+        YFS_BLOOD_RNAARR: ~/data/EXTERNAL_DATA/FUSION/YFS.BLOOD.RNAARR/YFS.BLOOD.RNAARR.pos.paneln
+    GTEx_v6:
+        weights: ~/data/EXTERNAL_DATA/FUSION/GTEx_v6/GTEx.{tissue}.pos
+        weights_dir: ~/data/EXTERNAL_DATA/FUSION/GTEx_v6/
+    GTEx_v7:
+        weights: ~/data/EXTERNAL_DATA/FUSION/GTEx_v7/{tissue}.P01.pos
+        weights_dir: ~/data/EXTERNAL_DATA/FUSION/GTEx_v7/
+    ref_ld_chr: ~/data/EXTERNAL_DATA/FUSION/LDREF/1000G.EUR.
+
+magma_gene:
+    refdata: ~/data/UKBiobank_ref/REF_dup/UKBiobank_ref_chr{chr}_dup
+    annot_file: ~/data/UKBiobank_ref/UKBiobank_ref_chr{chr}.genes.annot
+
+MAGMA:
+    GS: ~/data/EXTERNAL_DATA/GENE_SETS/GOgeneset_2019_05_09.txt

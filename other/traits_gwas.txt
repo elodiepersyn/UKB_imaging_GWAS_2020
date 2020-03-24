@@ -1,0 +1,212 @@
+trait	study	category
+White matter hyperintensity	Adib Samii	WMH
+Autism spectrum disorder or schizophrenia	Anney RJL	Psychiatric
+Eosinophil count	Astle W	Hematological
+Granulocyte count	Astle W	Hematological
+Hematocrit	Astle W	Hematological
+Hemoglobin concentration	Astle W	Hematological
+Lymphocyte count	Astle W	Hematological
+Monocyte count	Astle W	Hematological
+Myeloid white cell count	Astle W	Hematological
+Red cell distribution width	Astle W	Hematological
+Reticulocyte count	Astle W	Hematological
+Reticulocyte fraction of red cells	Astle W	Hematological
+Sum basophil neutrophil counts	Astle W	Hematological
+Sum eosinophil basophil counts	Astle W	Hematological
+Sum neutrophil eosinophil counts	Astle W	Hematological
+White blood cell count	Astle W	Hematological
+High light scatter reticulocyte count	Astle W	Hematological
+Mean corpuscular hemoglobin	Astle W	Hematological
+Mean corpuscular hemoglobin concentration	Astle W	Hematological
+Mean corpuscular volume	Astle W	Hematological
+Neutrophil count	Astle W	Hematological
+Basophil count	Astle W	Hematological
+Granulocyte percentage of myeloid white cells	Astle W	Hematological
+Mean platelet volume	Astle W	Hematological
+Monocyte percentage of white cells	Astle W	Hematological
+Red blood cell count	Astle W	Hematological
+High light scatter percentage of red cells	Astle W	Hematological
+Eosinophil percentage of granulocytes	Astle W	Hematological
+Eosinophil percentage of white cells	Astle W	Hematological
+Lymphocyte percentage of white cells	Astle W	Hematological
+Neutrophil percentage of granulocytes	Astle W	Hematological
+Neutrophil percentage of white cells	Astle W	Hematological
+Platelet count	Astle W	Hematological
+Plateletcrit	Astle W	Hematological
+Lewy body disease	Beecham GW	Neurological
+Systolic blood pressure	BPExome	Vascular
+IgA deficiency	Bronson P	Immunological
+Coronary artery disease	CARDIoGRAM	Vascular
+Coronary heart disease	CARDIoGRAM	Vascular
+Coronary artery disease	CARDIoGRAMplusC4D	Vascular
+Myocardial infarction	CARDIoGRAMplusC4D	Vascular
+Coronary artery disease with myocardial infarction	CARDIoGRAMplusC4D	Vascular
+Basal cell carcinoma	Chahal HS	Cancer
+Cognitive ageing	Davies G	Ageing
+Cognitive ageing females	Davies G	Ageing
+APOE apolipoprotein E	Deelen J	Other
+APOE apolipoprotein E females	Deelen J	Other
+APOE apolipoprotein E males	Deelen J	Other
+Type II diabetes	DIAGRAM	Metabolic
+Coronary artery disease	Dichgans M	Vascular
+Coronary artery disease or ischemic stroke	Dichgans M	Vascular
+Coronary artery disease or large artery stroke	Dichgans M	Vascular
+Cerebral white matter hyperintensities burden	Fornage M	WMH
+White matter hyperintensity burden	Fornage M	WMH
+Cerebrum	Fornage M	Neurological
+Age-related macular degeneration	Fritsche LG	Other
+Advanced age related macular degeneration	Fritsche LG	Other
+Height	GIANT	Anthropometric
+Dementia with Lewy bodies	Guerreiro R	Neurological
+Coronary artery disease	Howson JMM	Vascular
+Late onset Alzheimers disease	Hu X	Neurological
+Alzheimers disease	IGAP	Neurological
+Primary sclerosing cholangitis	Ji S	Other
+Lifespan	Joshi PK	Ageing
+Parental lifespan	Joshi PK	Ageing
+Alzheimers disease age of onset	Kamboh MI	Neurological
+Myocardial infarction early age of onset	Kathiresan S	Vascular
+Myocardial infarction early onset	Kathiresan S	Vascular
+Myocardial infarction	Kathiresan S	Vascular
+Coronary artery disease	Lee JY	Vascular
+Coronary heart disease	Lettre G	Vascular
+Leukocyte telomere length	Levy D	Other
+Telomere length	Levy D	Other
+Telomere	Levy D	Other
+Cerebral amyloid deposition PET imaging	Li QS	Neurological
+Cerebral amyloid deposition positivity PET imaging	Li QS	Neurological
+Late onset Alzheimers disease	Naj AC	Neurological
+Comparative height size at age 10	Neale B	Anthropometric
+Forced vital capacity	Neale B	Respiratory
+"Forced vital capacity, best measure"	Neale B	Respiratory
+Height	Neale B	Anthropometric
+Inguinal hernia	Neale B	Other
+Sitting height	Neale B	Anthropometric
+Pulse rate	Neale B	Vascular
+Chronic ischaemic heart disease	Neale B	Vascular
+Acute myocardial infarction	Neale B	Vascular
+Hip circumference	Neale B	Anthropometric
+Doctor diagnosed sarcoidosis	Neale B	Other
+Forced expiratory volume in 1-second	Neale B	Respiratory
+"Forced expiratory volume in 1-second, best measure"	Neale B	Respiratory
+"Forced expiratory volume in 1-second, predicted percentage"	Neale B	Respiratory
+Hearing difficulty or problems with background noise	Neale B	Other
+Hyperplasia of prostate	Neale B	Other
+Intestinal malabsorption	Neale B	Other
+"Medication for pain relief, constipation, heartburn: paracetamol"	Neale B	Other
+Mouth or teeth dental problems: dentures	Neale B	Other
+Peak expiratory flow	Neale B	Respiratory
+"Seen doctor for nerves, anxiety, tension or depression"	Neale B	Psychiatric
+Self-reported hyperthyroidism or thyrotoxicosis	Neale B	Other
+Self-reported malabsorption or coeliac disease	Neale B	Other
+Self-reported sarcoidosis	Neale B	Other
+Treatment with insulin product	Neale B	Treatment
+Treatment with levothyroxine sodium	Neale B	Treatment
+Pain type experienced in last month: headache	Neale B	Other
+Comparative body size at age 10	Neale B	Anthropometric
+Diastolic blood pressure	Neale B	Vascular
+"Medication for pain relief, constipation, heartburn: none of the above"	Neale B	Other
+Unspecified haematuria	Neale B	Other
+Self-reported enlarged prostate	Neale B	Other
+Started insulin within one year diagnosis of diabetes	Neale B	Metabolic
+Heel bone mineral density	Neale B	Bone mineral density
+Impedance of arm left	Neale B	Anthropometric
+Impedance of arm right	Neale B	Anthropometric
+Impedance of whole body	Neale B	Anthropometric
+Systolic blood pressure	Neale B	Vascular
+Nap during day	Neale B	Other
+Sleeplessness or insomnia	Neale B	Other
+Trunk fat-free mass	Neale B	Anthropometric
+Trunk predicted mass	Neale B	Anthropometric
+Alcohol intake frequency	Neale B	Behavior
+Daytime dozing or sleeping	Neale B	Other
+Fed-up feelings	Neale B	Psychiatric
+Frequency of tenseness or restlessness in last 2 weeks	Neale B	Psychiatric
+Getting up in morning	Neale B	Other
+Hair or balding pattern: pattern 3	Neale B	Other
+Hair or balding pattern: pattern 4	Neale B	Other
+Hand grip strength left	Neale B	Other
+Hand grip strength right	Neale B	Other
+Irritability	Neale B	Psychiatric
+Miserableness	Neale B	Psychiatric
+Mood swings	Neale B	Psychiatric
+Mouth or teeth dental problems: mouth ulcers	Neale B	Other
+Nervous feelings	Neale B	Psychiatric
+Neuroticism score	Neale B	Psychiatric
+Qualifications: college or university degree	Neale B	Other
+Relative age of first facial hair	Neale B	Other
+Relative age voice broke	Neale B	Other
+Sensitivity or hurt feelings	Neale B	Psychiatric
+Treatment with paracetamol	Neale B	Treatment
+Trunk fat percentage	Neale B	Anthropometric
+Types of physical activity in last 4 weeks: other exercises	Neale B	Other
+Worrier or anxious feelings	Neale B	Psychiatric
+Illnesses of mother: parkinsons disease	Neale B	Neurological
+Leg fat mass left	Neale B	Anthropometric
+Arm fat percentage left	Neale B	Anthropometric
+Arm fat percentage right	Neale B	Anthropometric
+Arm fat mass left	Neale B	Anthropometric
+Arm fat mass right	Neale B	Anthropometric
+Body fat percentage	Neale B	Anthropometric
+Body mass index	Neale B	Anthropometric
+"Cause of death: alzheimers disease, unspecified"	Neale B	Neurological
+Cause of death: unspecified dementia	Neale B	Neurological
+Fathers age at death	Neale B	Ageing
+Frequency of stair climbing in last 4 weeks	Neale B	Other
+Illnesses of father: alzheimers disease or dementia	Neale B	Neurological
+Illnesses of father: diabetes	Neale B	Metabolic
+"Illnesses of father: none of the above, group 1"	Neale B	Other
+Illnesses of mother: alzheimers disease or dementia	Neale B	Neurological
+Illnesses of mother: diabetes	Neale B	Metabolic
+"Illnesses of mother: none of the above, group 1"	Neale B	Other
+Illnesses of siblings: alzheimers disease or dementia	Neale B	Neurological
+Leg fat mass right	Neale B	Anthropometric
+Leg fat percentage left	Neale B	Anthropometric
+Leg fat percentage right	Neale B	Anthropometric
+"Medication for cholesterol, blood pressure or diabetes: cholesterol lowering medication"	Neale B	Metabolic
+"Medication for cholesterol, blood pressure or diabetes: none of the above"	Neale B	Metabolic
+Mother still alive	Neale B	Ageing
+Mothers age at death	Neale B	Ageing
+Number of days or week of moderate physical activity 10+ minutes	Neale B	Other
+Self-reported dementia or alzheimers/cognitive impairment	Neale B	Neurological
+Self-reported high cholesterol	Neale B	Metabolic
+Treatment with atorvastatin	Neale B	Treatment
+Treatment with cholesterol lowering medication	Neale B	Treatment
+Treatment with ezetimibe	Neale B	Treatment
+Treatment with ezetrol 10mg tablet	Neale B	Treatment
+Treatment with lipitor 10mg tablet	Neale B	Treatment
+Treatment with none of the above	Neale B	Treatment
+Treatment with rosuvastatin	Neale B	Treatment
+Treatment with simvastatin	Neale B	Treatment
+Trunk fat mass	Neale B	Anthropometric
+Waist circumference	Neale B	Anthropometric
+Weight	Neale B	Anthropometric
+Weight change compared with 1 year ago	Neale B	Anthropometric
+Whole body fat mass	Neale B	Anthropometric
+Coronary artery disease	Nelson CP	Vascular
+Schizophrenia	PGC	Psychiatric
+High grade serous ovarian cancer	Phelan M	Cancer
+Invasive ovarian cancer	Phelan M	Cancer
+Serous invasive ovarian cancer	Phelan M	Cancer
+Alzheimers disease	Potkin SG	Neurological
+C-reactive protein	Prins B	Metabolic
+Low density lipoprotein	Prins B	Metabolic
+Total cholesterol	Prins B	Metabolic
+Cognitive decline age related	Raj T	Ageing
+Cortical amyloid beta load	Ramanan VK	Other
+Alzheimers disease biomarkers	Ramanan VK	Neurological
+Cerebrospinal AB1 42 levels in Alzheimers disease dementia	Ramirez A	Neurological
+Late onset Alzheimers disease	Reitz C	Neurological
+Renal cell carcinoma	Scelo G	Cancer
+Posterior cortical atrophy	Schott JM	Other
+Brain imaging	Shen	Neurological
+Neuroticism	SSGAC	Psychiatric
+Years of educational attainment	SSGAC	Other
+Idiopathic membranous nephropathy	Stanescu HC	Other
+Blood protein levels	Suhre K	Other
+Cholesterol total	Surakka I	Metabolic
+HDL cholesterol	Surakka I	Metabolic
+LDL cholesterol change with statins	Thompson	Metabolic
+Coronary artery disease	van der Harst P	Vascular
+White matter hyperintensity burden	Verhaaren BF	WMH
+FAM117B transcript levels	Wild PS	Other

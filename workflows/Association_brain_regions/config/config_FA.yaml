@@ -1,0 +1,11 @@
+DATA_DIR: ~/data/UKB_imaging_15.10.2018/
+PROC_DATA_DIR: ~/data/UKB_imaging_FA_15.10.2018_processed/
+TRAIT: imaging
+FIELDS: ./fields_imaging_FA.txt
+
+plink2: ~/PROGRAMS/plink2_linux_i686/plink2
+
+RESULTS_DIR: ~/results/results_Associations_Brain_Regions_FA_15.10.2018/
+
+SNPs: ~/results/TOPHITS/variants_FA_MD_list.txt
+

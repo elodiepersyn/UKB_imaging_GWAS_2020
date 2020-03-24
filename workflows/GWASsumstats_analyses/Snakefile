@@ -1,0 +1,519 @@
+#!/usr/bin/env python
+
+import os
+import glob
+import pandas
+
+# Config ---------------------------------------------------------------------------------------------
+# configfile: "config_meta.yaml"
+configfile: "config/config_meta_dbgap.yaml"
+
+# Path for creating output files 
+OUT_DIR = config["OUT_DIR"]
+
+# Label of the phenotype for naming output files
+TRAIT1_label = config["TRAIT1"]["label"]
+
+# Path of the file with summary statistics
+TRAIT1_sumstats = config["TRAIT1"]["sumstats"]
+
+# Tools
+munge_sumstats_py = config["Programs"]["munge_sumstats_py"]
+ldsc_py = config["Programs"]["ldsc_py"]
+FUSION_assoc_test_R = config["Programs"]["FUSION_assoc_test_R"]
+plink1_9 = config["Programs"]["plink1_9"]
+magma = config["Programs"]["magma"]
+
+# scripts from Helena Gaspar to clean summary statistics 
+# https://www.biorxiv.org/content/10.1101/449207v1.article-info
+cleanSumstats_path="/mnt/lustre/groups/ukbiobank/sumstats/scripts/cleanSumstats.py"
+variableBoudaries_path="/mnt/lustre/groups/ukbiobank/sumstats/scripts/variableBoundaries.py"
+hapmap_hmc_uniq_path="/mnt/lustre/groups/ukbiobank/sumstats/scripts/hapmap_hmc_uniq.txt"
+
+# Variables ------------------------------------------------------------------------------------------
+
+# For Partitioned heritability
+GROUPS=["Adrenal_Pancreas", "Cardiovascular", "CNS", "Connective_Bone", "GI", "Immune", "Kidney", "Liver", "Other", "SkeletalMuscle"]
+CTS_NAMES=["GTEx", "GTEx_brain", "Cahoy"]
+FUSION_TISSUES_STUDIES=["CMC.BRAIN.RNASEQ","CMC.BRAIN.RNASEQ_SPLICING","METSIM.ADIPOSE.RNASEQ","NTR.BLOOD.RNAARR", "YFS.BLOOD.RNAARR"]
+GTEX_TISSUES=["Artery_Aorta","Artery_Coronary", "Artery_Tibial", "Whole_Blood"]
+
+# For Genetic Correlation
+TRAIT2 = pandas.read_csv(config["TRAIT2"], sep="\t", header=0) 
+TRAIT2_labels = TRAIT2['Label']
+TRAIT2_labels = TRAIT2_labels.values
+TRAIT2_labels = TRAIT2_labels.tolist()
+
+# Main rule ------------------------------------------------------------------------------------------
+rule all:
+	input:
+		OUT_DIR + "/RESULTS/"+ TRAIT1_label + "_h2.log", 
+		OUT_DIR + "/RESULTS_LDSC_partitioned/" + TRAIT1_label + "_baseline.results", 
+		expand(OUT_DIR + "/RESULTS_LDSC_partitioned/" + TRAIT1_label + "_{group}.results", group=GROUPS),
+		expand(OUT_DIR + "/RESULTS_LDSC_partitioned_CTS/" +  TRAIT1_label + "_{cts_name}.cell_type_results.txt", cts_name=CTS_NAMES), 
+		OUT_DIR + "/RESULTS_RG/" + TRAIT1_label + "_alltraitsnoMHC.txt",
+		expand(OUT_DIR + "/RESULTS_FUSION_Studies/" +  TRAIT1_label + "_{tissue}_chr{chr}.dat", tissue=FUSION_TISSUES_STUDIES, chr=range(1,23)),
+#		expand(OUT_DIR + "/RESULTS_FUSION_GTEx_v6/" +  TRAIT1_label + "_{tissue}_chr{chr}.dat", tissue=GTEX_TISSUES, chr=range(1,23)),
+		expand(OUT_DIR + "/RESULTS_FUSION_GTEx_v7/" +  TRAIT1_label + "_{tissue}_chr{chr}.dat", tissue=GTEX_TISSUES, chr=range(1,23)),
+		OUT_DIR + "/MAGMA/GENE/" + TRAIT1_label + "_noMHC.genes.raw",
+		OUT_DIR + "/MAGMA/GENESET/" + TRAIT1_label + "_" + os.path.basename(config["MAGMA"]["GS"]) + ".sets.out"
+
+
+
+# Conditional rules ----------------------------------------------------------------------------------
+
+
+#-----------------
+# Processing data
+#-----------------
+
+# Clean Data
+rule Clean_Data:
+	input:
+		sumstats = TRAIT1_sumstats
+	output:
+		clean = OUT_DIR + "/SUMMARYSTATS/cleaned/" + TRAIT1_label + ".gz",
+			
+	params:
+		trait = TRAIT1_label,
+		dir = OUT_DIR + "/SUMMARYSTATS/" ,
+		cleanSumstats=cleanSumstats_path,
+		variableBoudaries=variableBoudaries_path
+	log:
+		out = "log/cleandata.stdout",
+		err = "log/cleandata.stderr"	
+	shell:
+		"""
+		# Identify variables
+		cd {params.dir}
+		if [ ! -d "{params.dir}/cleaned/" ]; then
+			mkdir {params.dir}/cleaned/
+		fi
+		if [ ! -d "{params.dir}/cleaned_boundaries/" ]; then
+			mkdir {params.dir}/cleaned_boundaries/
+		fi
+		if [ ! -d "{params.dir}/cleaned_multi/" ]; then
+			mkdir {params.dir}/cleaned_multi/
+		fi
+
+		# Change plink2 file
+		if [[ {input.sumstats} == *"glm"* ]]
+        then
+			awk 'NR==1{{gsub("REF", "noREF", $0);quit}};1' {input.sumstats} | awk 'NR==1{{gsub("AX", "A2", $0);quit}};1' | awk 'NR==1{{gsub("OBS_CT", "N", $0);quit}};1' | awk '{{$5="";print $0}}' > {input.sumstats}.temp
+		else
+			awk 'NR==1{{gsub("Weight", "N", $0);quit}};1' {input.sumstats} > {input.sumstats}.temp
+		fi
+		gzip -f {input.sumstats}.temp		
+		
+		{params.cleanSumstats} {input.sumstats}.temp.gz {params.dir}/cleaned/{params.trait}
+		rm {input.sumstats}.temp.gz
+		
+		# Apply filters
+		{params.variableBoundaries} {params.dir}/cleaned/{params.trait}.gz {params.dir}/cleaned_boundaries/{params.trait}
+		
+		# Remove duplicates
+		body() {{ IFS= read -r header;     printf '%s\n' "$header";     "$@"; }}
+		zcat cleaned_boundaries/{params.trait}.gz|body sort -k2|uniq > cleaned_boundaries/{params.trait}
+		gzip -f cleaned_boundaries/{params.trait}
+
+		# Remove multiallelic snps
+		zcat cleaned_boundaries/{params.trait}.gz > cleaned_boundaries/{params.trait}_tmp
+		awk 'NR==FNR {{count[$1]++; next}} count[$1]>1' cleaned_boundaries/{params.trait}_tmp cleaned_boundaries/{params.trait}_tmp > cleaned_multi/{params.trait}_duplicates
+		gzip -f cleaned_multi/{params.trait}_duplicates
+		rm cleaned_boundaries/{params.trait}_tmp
+		dups=cleaned_multi/{params.trait}_duplicates.gz
+		zcat ${{dups}}|awk '{{print $1}}' > cleaned_boundaries/{params.trait}_tmp
+		zcat cleaned_boundaries/{params.trait}.gz > cleaned_boundaries/{params.trait}_tmp2
+		awk '{{if(f==1){{r[$1]}}else if(!($1 in r)){{print}}}}' f=1 cleaned_boundaries/{params.trait}_tmp f=2 cleaned_boundaries/{params.trait}_tmp2 > cleaned_boundaries/{params.trait}
+		rm cleaned_boundaries/{params.trait}_tmp cleaned_boundaries/{params.trait}_tmp2
+
+		# Move files
+		gzip -f cleaned_boundaries/{params.trait}
+		mv cleaned_boundaries/{params.trait}.gz cleaned/
+		"""
+
+# Munge Data
+rule Munge_TRAIT1_Data_noMHC:
+	input: 
+		sumstats =  OUT_DIR + "/SUMMARYSTATS/cleaned/" + TRAIT1_label + ".gz"
+	output:
+		munged = OUT_DIR + "/SUMMARYSTATS/munged/" + TRAIT1_label + ".sumstats.gz",
+		munged_noMHC = OUT_DIR + "/SUMMARYSTATS/munged_noMHC/" + TRAIT1_label + "_noMHC.sumstats.gz"
+	params:
+		merge_alleles = config["Munge_TRAIT1_Data"]["merge_alleles"],
+		dir = OUT_DIR + "/SUMMARYSTATS/" ,
+		trait =  TRAIT1_label,
+		munge_sumstats = munge_sumstats_py,
+		hapmap_hmc_uniq=hapmap_hmc_uniq_path
+	shell:
+		"""
+		cd {params.dir}
+
+		# Generate Munged files	
+		{params.munge_sumstats} --sumstats {params.dir}/cleaned/{params.trait}.gz \
+					--merge-alleles {params.merge_alleles} \
+					--out {params.dir}/munged/{params.trait} 
+		
+		# Remove MHC
+		zcat munged/{params.trait}.sumstats.gz > {params.trait}.tmp
+		gawk -F"\t" '{{if(f==1){{r[$1]}}else if(!($1 in r)){{print}}}}' f=1 {params.hapmap_hmc_uniq} f=2 {params.trait}.tmp > munged_noMHC/{params.trait}_noMHC.sumstats
+		gzip munged_noMHC/{params.trait}_noMHC.sumstats
+
+		"""
+
+#-----------------
+# Heritability
+#-----------------
+
+# Heritability
+rule Heritability:
+	input:
+		sumstats = OUT_DIR + "/SUMMARYSTATS/munged_noMHC/" + TRAIT1_label + "_noMHC.sumstats.gz"
+	output:
+		OUT_DIR + "/RESULTS/" + TRAIT1_label + "_h2.log"
+	params:
+		ref_ld_chr = config["Heritability"]["ref_ld_chr"],
+		w_ld_chr = config["Heritability"]["w_ld_chr"],
+		out = OUT_DIR + "/RESULTS/" +  TRAIT1_label + "_h2", 
+		ldsc = ldsc_py
+	shell:
+		"""
+		{params.ldsc} \
+		--h2 {input.sumstats} \
+		--ref-ld-chr  {params.ref_ld_chr} \
+		--w-ld-chr {params.w_ld_chr} \
+		--out {params.out}
+		"""
+
+#-----------------
+# Genetic correlation
+#-----------------
+
+# Genetic correlation - LD score regression
+rule Genetic_Correlation_LDscore:
+	input:
+		TRAIT1 = OUT_DIR + "/SUMMARYSTATS/munged_noMHC/" + TRAIT1_label + "_noMHC.sumstats.gz",
+		TRAIT2 = lambda wildcards: TRAIT2.loc[TRAIT2_labels.index(wildcards.trait2)]['File']
+	output:
+		OUT_DIR + "/RESULTS_RG/" + TRAIT1_label + "_{trait2}.log"
+	params:
+		ref_ld_chr = config["Genetic_Correlation_RG"]["ref_ld_chr"],
+		w_ld_chr = config["Genetic_Correlation_RG"]["w_ld_chr"],
+		out = OUT_DIR + "/RESULTS_RG/" +  TRAIT1_label + "_{trait2}", 
+		ldsc = ldsc_py
+	shell:
+		"""
+		{params.ldsc} \
+		--rg {input.TRAIT1},{input.TRAIT2} \
+		--ref-ld-chr {params.ref_ld_chr} \
+		--w-ld-chr {params.w_ld_chr} \
+		--out {params.out}
+		"""
+
+rule Merge_LDscore_Results:
+	input:
+		expand(OUT_DIR + "/RESULTS_RG/" +  TRAIT1_label + "_{trait2}.log", trait2=TRAIT2_labels)
+	output:
+		OUT_DIR + "/RESULTS_RG/" + TRAIT1_label + "_alltraitsnoMHC.txt"
+	shell:
+		"""
+		count=0
+		for f in {input}
+		do 
+		count=$[$count +1]
+		if [ $count -eq 1 ] 
+		then 
+		cat $f | grep 'p1' -A1 > {output}
+		else
+		cat $f | grep 'p1' -A1 | tail -n 1 >> {output} 
+		fi
+		done
+		"""	
+
+#-----------------
+# Patitioned heritability
+#-----------------
+# Partitioned heritability - Baseline
+rule Baseline_2015:
+	input:
+		sumstats = OUT_DIR + "/SUMMARYSTATS/munged_noMHC/" + TRAIT1_label + "_noMHC.sumstats.gz"
+	output:
+		OUT_DIR + "/RESULTS_LDSC_partitioned/" +  TRAIT1_label + "_baseline.results"
+	params: 
+		ref_ld_chr = config["Baseline_2015"]["ref_ld_chr"],
+		w_ld_chr = config["Baseline_2015"]["w_ld_chr"],
+		frqfile_chr = config["Baseline_2015"]["frqfile_chr"],
+		out = OUT_DIR + "/RESULTS_LDSC_partitioned/" +  TRAIT1_label + "_baseline",
+		ldsc = ldsc_py
+	shell:
+		"""
+		{params.ldsc} \
+		--h2 {input.sumstats}\
+		--ref-ld-chr  {params.ref_ld_chr} \
+		--w-ld-chr {params.w_ld_chr} \
+		--overlap-annot \
+		--frqfile-chr {params.frqfile_chr}\
+		--print-coefficients \
+		--out {params.out}
+		"""
+
+# Partitioned heritability - Cell-type group analysis
+rule Cell_Type_Group_Analysis_2015:
+	input:
+		sumstats = OUT_DIR + "/SUMMARYSTATS/munged_noMHC/" + TRAIT1_label + "_noMHC.sumstats.gz"
+	output:
+		OUT_DIR + "/RESULTS_LDSC_partitioned/" + TRAIT1_label + "_{group}.results"
+	params:
+		ref_ld_chr = config["Cell_Type_Group_Analysis_2015"]["ref_ld_chr"],
+		w_ld_chr = config["Cell_Type_Group_Analysis_2015"]["w_ld_chr"],
+		frqfile_chr = config["Cell_Type_Group_Analysis_2015"]["frqfile_chr"],
+		out = OUT_DIR + "/RESULTS_LDSC_partitioned/" + TRAIT1_label + "_{group}",
+		ldsc = ldsc_py
+	shell:
+		"""
+		{params.ldsc} \
+		--h2 {input.sumstats} \
+		--ref-ld-chr  {params.ref_ld_chr} \
+		--w-ld-chr {params.w_ld_chr} \
+		--overlap-annot \
+		--frqfile-chr {params.frqfile_chr} \
+		--print-coefficients \
+		--out {params.out}
+		"""
+
+# Partitioned heritability - Cell_Type_Specific_Analysis_2017
+rule Correct_CTS_file:
+	input:
+		cts_file = config["Correct_CTS_file"]["cts_file"]
+	output:
+		cts_file2 = config["Correct_CTS_file"]["cts_file2"]
+	params:
+		cts_dir = config["Correct_CTS_file"]["cts_dir"]
+	shell:
+		"R -q --vanilla --args {params.cts_dir} {input} {output} < scripts/ldcts_files.R"
+
+rule Cell_Type_Specific_Analysis_2017:
+	input: 
+		sumstats = OUT_DIR + "/SUMMARYSTATS/munged_noMHC/" + TRAIT1_label + "_noMHC.sumstats.gz",
+		cts_file = config["Correct_CTS_file"]["cts_file2"]
+	output:
+		OUT_DIR + "/RESULTS_LDSC_partitioned_CTS/" + TRAIT1_label + "_{cts_name}.cell_type_results.txt"
+	params:
+		ref_ld_chr = config["Cell_Type_Specific_Analysis_2017"]["ref_ld_chr"],
+		w_ld_chr = config["Cell_Type_Specific_Analysis_2017"]["w_ld_chr"],
+		out = OUT_DIR + "/RESULTS_LDSC_partitioned_CTS/" + TRAIT1_label + "_{cts_name}",
+		ldsc = ldsc_py
+	shell:
+		"""
+		{params.ldsc} \
+		--h2-cts {input.sumstats} \
+        --ref-ld-chr {params.ref_ld_chr} \
+		--ref-ld-chr-cts  {input.cts_file} \
+        --w-ld-chr {params.w_ld_chr} \
+        --out {params.out}
+		"""	
+
+#-----------------
+# TWAS
+#-----------------
+# FUSION
+rule sumstats_NA:
+	input:
+		OUT_DIR + "/SUMMARYSTATS/munged/" + TRAIT1_label + ".sumstats.gz"
+	output:
+		OUT_DIR + "/SUMMARYSTATS/" + TRAIT1_label + "2.sumstats"		
+	shell:
+		"R -q --vanilla --args {input} {output} < scripts/sumstats_NA.R"
+ 
+rule FUSION_Studies:
+	input:
+		OUT_DIR + "/SUMMARYSTATS/" + TRAIT1_label + "2.sumstats"
+	output:
+		expand(OUT_DIR + "/RESULTS_FUSION_Studies/" +  TRAIT1_label + "_{{tissue}}_chr{chr}.dat", chr=range(1,23))
+	params:
+		weights = config["FUSION"]["Studies"]["weights"],
+		weights_dir = config["FUSION"]["Studies"]["weights_dir"],
+		paneln = lambda wildcards: config["FUSION"]["Studies"][wildcards.tissue.replace(".", "_")],
+		ref_ld_chr = config["FUSION"]["ref_ld_chr"],
+		FUSION = FUSION_assoc_test_R,
+		trait = TRAIT1_label,
+		GWASN = config["GWASN"],
+		out_dir = OUT_DIR
+	shell:
+		"""
+		source activate FUSION_env
+
+
+        for i in `seq 1 22`
+        do 
+        Rscript {params.FUSION} \
+        --sumstats {input}  \
+        --weights {params.paneln} \
+		--weights_dir {params.weights_dir} \
+        --ref_ld_chr {params.ref_ld_chr} \
+        --chr ${{i}} \
+		--GWASN {params.GWASN} \
+		--coloc_P 1 \
+		--out {params.out_dir}/RESULTS_FUSION_Studies/{params.trait}_{wildcards.tissue}_chr${{i}}.dat ;\
+        done 
+        """
+
+
+rule FUSION_GTEx_v6:
+	input:
+		OUT_DIR + "/SUMMARYSTATS/" + TRAIT1_label + "2.sumstats"
+	output:
+		expand(OUT_DIR + "/RESULTS_FUSION_GTEx_v6/" +  TRAIT1_label + "_{{tissue}}_chr{chr}.dat", chr=range(1,23))
+	params:
+		weights = config["FUSION"]["GTEx_v6"]["weights"],
+		weights_dir = config["FUSION"]["GTEx_v6"]["weights_dir"],
+		ref_ld_chr = config["FUSION"]["ref_ld_chr"],
+		FUSION = FUSION_assoc_test_R,
+		trait = TRAIT1_label,
+		out_dir = OUT_DIR
+	shell:
+		"""
+		for i in `seq 1 22`
+		do 
+		Rscript {params.FUSION} \
+		--sumstats {input}  \
+		--weights {params.weights} \
+		--weights_dir {params.weights_dir} \
+		--ref_ld_chr {params.ref_ld_chr} \
+		--chr ${{i}} \
+		--out {params.out_dir}/RESULTS_FUSION_GTEx_v6/{params.trait}_{wildcards.tissue}_chr${{i}}.dat ;\
+		done 
+		"""
+
+rule FUSION_GTEx_v7:
+	input:
+		OUT_DIR + "/SUMMARYSTATS/" + TRAIT1_label + "2.sumstats"
+	output:
+		expand(OUT_DIR + "/RESULTS_FUSION_GTEx_v7/" +  TRAIT1_label + "_{{tissue}}_chr{chr}.dat", chr=range(1,23))
+	params:
+		weights = config["FUSION"]["GTEx_v7"]["weights"],
+		weights_dir = config["FUSION"]["GTEx_v7"]["weights_dir"],
+		ref_ld_chr = config["FUSION"]["ref_ld_chr"],
+		FUSION = FUSION_assoc_test_R,
+		trait = TRAIT1_label,
+		GWASN = config["GWASN"],
+		out_dir = OUT_DIR
+	shell:
+		"""
+		source activate FUSION_env        
+
+		for i in `seq 1 22`
+        do 
+        Rscript {params.FUSION} \
+        --sumstats {input}  \
+        --weights {params.weights} \
+        --weights_dir {params.weights_dir} \
+        --ref_ld_chr {params.ref_ld_chr} \
+        --chr ${{i}} \
+		--coloc_P 1 \
+		--GWASN {params.GWASN} \
+		--out {params.out_dir}/RESULTS_FUSION_GTEx_v7/{params.trait}_{wildcards.tissue}_chr${{i}}.dat ;\
+        done 
+        """
+
+# FUSION - OTHER TRAITS
+rule sumstats_NA_other:
+	input:
+		TRAIT2 = lambda wildcards: TRAIT2.loc[TRAIT2_labels==wildcards.trait2]['File']
+	output:
+		temp(OUT_DIR + "/SUMMARYSTATS/{trait2}_v2.sumstats")
+	shell:
+		"R -q --vanilla --args {input} {output} < scripts/sumstats_NA.R"
+
+#-----------------
+# Gene-based study
+#-----------------
+
+rule magma_gene:
+	input:
+		sumstats = OUT_DIR + "/SUMMARYSTATS/cleaned/" + TRAIT1_label + ".gz",
+		pval_file = TRAIT1_sumstats,
+	output:
+		gene_out = OUT_DIR + "/MAGMA/GENE/" + TRAIT1_label + ".genes.out",
+		gene_intermediate = OUT_DIR + "/MAGMA/GENE/" + TRAIT1_label + ".genes.raw"
+	params:
+		magma=magma,
+		refdata=expand(config["magma_gene"]["refdata"],chr=range(1,23)),
+		annot_file = expand(config["magma_gene"]["annot_file"],chr=range(1,23)),
+		N=config["GWASN"],
+		gene_prefix=OUT_DIR + "/MAGMA/GENE/" + TRAIT1_label ,
+	shell:
+		"""
+
+		# merge munged file with initial file to get chr_pos ids and p-values
+		R -q --vanilla --args {input.sumstats} {input.pval_file} < scripts/magma_fileprocess.R 
+
+		for chr in `seq 1 22`
+		do
+
+		awk -v chr=${{chr}} 'NR==1{{print $0}}; NR>1{{if($5 == chr) print $0}}' {input.sumstats}.temp > {input.sumstats}.temp2
+
+		# find the reference dataset for chr 
+		for file in {params.refdata}
+        do
+        	if [[ $file == *"chr${{chr}}_"* ]]
+            then
+            	reffile=$file
+            fi
+        done
+
+		# find the gene annotation dataset for chr
+		for file in {params.annot_file}
+        do
+            if [[ $file == *"chr${{chr}}.genes.annot" ]]
+            then
+                annotfile=$file
+            fi
+        done
+
+		# run magma
+		{params.magma} \
+		--bfile ${{reffile}} \
+		--pval {input.sumstats}.temp2 ncol=N \
+		--gene-annot ${{annotfile}} \
+		--out {params.gene_prefix}.chr${{chr}}
+		
+		if [ $chr -eq 1 ]
+			then
+			cat {params.gene_prefix}.chr${{chr}}.genes.raw > {output.gene_intermediate}
+			cat {params.gene_prefix}.chr${{chr}}.genes.out > {output.gene_out}
+		else
+			sed '1,2d' {params.gene_prefix}.chr${{chr}}.genes.raw >> {output.gene_intermediate}
+			sed '1d' {params.gene_prefix}.chr${{chr}}.genes.out >> {output.gene_out}
+		fi 
+			echo ${{chr}}
+			rm {params.gene_prefix}.chr${{chr}}.genes.raw 
+			rm {params.gene_prefix}.chr${{chr}}.genes.out
+		done
+
+		
+		rm {input.sumstats}.temp
+		rm {input.sumstats}.temp2
+		"""
+
+#-----------------
+# Gene-set study
+#-----------------
+
+rule magma_GS:
+	input:
+		gene_out = OUT_DIR + "/MAGMA/GENE/" + TRAIT1_label + ".genes.out",
+		gene_intermediate = OUT_DIR + "/MAGMA/GENE/" + TRAIT1_label + ".genes.raw"
+	output:
+		OUT_DIR + "/MAGMA/GENESET/" + TRAIT1_label + "_" + os.path.basename(config["MAGMA"]["GS"]) + ".sets.out"  
+	params:
+		magma=magma,
+		geneset = config["MAGMA"]["GS"], 
+		out = OUT_DIR + "/MAGMA/GENESET/" + TRAIT1_label + "_" + os.path.basename(config["MAGMA"]["GS"])	
+	shell:
+		"""
+		{params.magma} \
+		--gene-results {input.gene_intermediate} \
+		--set-annot {params.geneset} col=2,1 \
+		--out {params.out}
+		"""
