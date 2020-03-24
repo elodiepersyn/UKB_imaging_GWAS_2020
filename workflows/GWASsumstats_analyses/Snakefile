@@ -307,10 +307,10 @@ rule Cell_Type_Specific_Analysis_2017:
 		"""
 		{params.ldsc} \
 		--h2-cts {input.sumstats} \
-        --ref-ld-chr {params.ref_ld_chr} \
+		--ref-ld-chr {params.ref_ld_chr} \
 		--ref-ld-chr-cts  {input.cts_file} \
-        --w-ld-chr {params.w_ld_chr} \
-        --out {params.out}
+		--w-ld-chr {params.w_ld_chr} \
+		--out {params.out}
 		"""	
 
 #-----------------
@@ -344,19 +344,19 @@ rule FUSION_Studies:
 		source activate FUSION_env
 
 
-        for i in `seq 1 22`
-        do 
-        Rscript {params.FUSION} \
-        --sumstats {input}  \
-        --weights {params.paneln} \
+		for i in `seq 1 22`
+		do 
+		Rscript {params.FUSION} \
+		--sumstats {input}  \
+		--weights {params.paneln} \
 		--weights_dir {params.weights_dir} \
-        --ref_ld_chr {params.ref_ld_chr} \
-        --chr ${{i}} \
+		--ref_ld_chr {params.ref_ld_chr} \
+		--chr ${{i}} \
 		--GWASN {params.GWASN} \
 		--coloc_P 1 \
 		--out {params.out_dir}/RESULTS_FUSION_Studies/{params.trait}_{wildcards.tissue}_chr${{i}}.dat ;\
-        done 
-        """
+		done 
+		"""
 
 
 rule FUSION_GTEx_v6:
@@ -403,18 +403,18 @@ rule FUSION_GTEx_v7:
 		source activate FUSION_env        
 
 		for i in `seq 1 22`
-        do 
-        Rscript {params.FUSION} \
-        --sumstats {input}  \
-        --weights {params.weights} \
-        --weights_dir {params.weights_dir} \
-        --ref_ld_chr {params.ref_ld_chr} \
-        --chr ${{i}} \
+		do 
+		Rscript {params.FUSION} \
+		--sumstats {input}  \
+		--weights {params.weights} \
+		--weights_dir {params.weights_dir} \
+		--ref_ld_chr {params.ref_ld_chr} \
+		--chr ${{i}} \
 		--coloc_P 1 \
 		--GWASN {params.GWASN} \
 		--out {params.out_dir}/RESULTS_FUSION_GTEx_v7/{params.trait}_{wildcards.tissue}_chr${{i}}.dat ;\
-        done 
-        """
+		done 
+		"""
 
 # FUSION - OTHER TRAITS
 rule sumstats_NA_other:
@@ -455,21 +455,21 @@ rule magma_gene:
 
 		# find the reference dataset for chr 
 		for file in {params.refdata}
-        do
-        	if [[ $file == *"chr${{chr}}_"* ]]
-            then
-            	reffile=$file
-            fi
-        done
+		do
+			if [[ $file == *"chr${{chr}}_"* ]]
+			then
+				reffile=$file
+			fi
+		done
 
 		# find the gene annotation dataset for chr
 		for file in {params.annot_file}
-        do
-            if [[ $file == *"chr${{chr}}.genes.annot" ]]
-            then
-                annotfile=$file
-            fi
-        done
+		do
+			if [[ $file == *"chr${{chr}}.genes.annot" ]]
+			then
+				annotfile=$file
+			fi
+		done
 
 		# run magma
 		{params.magma} \
@@ -477,7 +477,7 @@ rule magma_gene:
 		--pval {input.sumstats}.temp2 ncol=N \
 		--gene-annot ${{annotfile}} \
 		--out {params.gene_prefix}.chr${{chr}}
-		
+
 		if [ $chr -eq 1 ]
 			then
 			cat {params.gene_prefix}.chr${{chr}}.genes.raw > {output.gene_intermediate}
@@ -491,7 +491,7 @@ rule magma_gene:
 			rm {params.gene_prefix}.chr${{chr}}.genes.out
 		done
 
-		
+
 		rm {input.sumstats}.temp
 		rm {input.sumstats}.temp2
 		"""
