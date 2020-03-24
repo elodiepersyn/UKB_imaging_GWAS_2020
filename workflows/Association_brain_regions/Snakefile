@@ -56,24 +56,24 @@ rule GWAS:
 			--hwe 1e-10 \
 			--out {params.out_dir}/GWAS_{params.trait}_chr${{chr}};
 		done
-		
+
 		count=0
-        for chr in 2 5 6 10 16 17 20;
-        do 
+		for chr in 2 5 6 10 16 17 20;
+		do 
 		f="{params.out_dir}/GWAS_{params.trait}_chr${{chr}}.{params.trait}.glm.linear"
-        
+
 		count=$[$count +1];
-        if [ $count -eq 1 ] ;
-        then
-        cat $f  > temp_{params.trait};
-        else
-        cat $f | tail -n +2 >> temp_{params.trait} ;
-        fi;
-        done        
-        
-        sed -re '1 s/^#//' temp_{params.trait} > {output}
-        rm temp_{params.trait}
-		
+		if [ $count -eq 1 ] ;
+		then
+		cat $f  > temp_{params.trait};
+		else
+		cat $f | tail -n +2 >> temp_{params.trait} ;
+		fi;
+		done        
+
+		sed -re '1 s/^#//' temp_{params.trait} > {output}
+		rm temp_{params.trait}
+
 		rm {params.out_dir}/GWAS_{params.trait}_chr*
 		"""
 

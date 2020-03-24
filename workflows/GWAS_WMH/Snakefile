@@ -83,7 +83,7 @@ rule Variant_QC:
 		included_variants = PROC_DATA_DIR + "/variants/ukb_mfi_chr{chr}_v3_MAF0001_INFO5.txt"	
 	shell:
 		"""
-	    awk '{{if ($6>=0.0001 && $8>=0.5) print $2;}}' {input} > {output}	
+		awk '{{if ($6>=0.0001 && $8>=0.5) print $2;}}' {input} > {output}	
 		#awk '{{if ($6>=0.0001 && $8>=0.5) print $1,$2,{wildcards.chr},$3,$4,$5;}}' {input} | sed '1iSNPID rsid chromosome position allele1 allele2' > {output}
 		"""
 
@@ -137,22 +137,13 @@ rule Extract_Genotyped_NoLongRangeLD_SNPs:
 		proc_data_dir = PROC_DATA_DIR
 	shell:
 		"""
-		#{params.qctool} \
-		#-g {input.bgen} \
-		#-s {input.sample}  \
-		#-incl-rsids {input.genotyped} \
-		#-excl-rsids {input.longrangeLD} \
-		#-og {params.proc_data_dir}/genotyped/UKB_imaging_chr{wildcards.chr}_v3_genotyped_nolongrangeLD.bed \
-		#-ofiletype binary_ped 
-		
 		{params.plink} \
-        --bgen {input.bgen} \
-        --sample {input.sample}  \
-        --extract {input.genotyped} \
-        --exclude {input.longrangeLD} \
-        --make-bed \
-        --out {params.proc_data_dir}/genotyped/UKB_imaging_chr{wildcards.chr}_v3_genotyped_nolongrangeLD
-
+		--bgen {input.bgen} \
+		--sample {input.sample}  \
+		--extract {input.genotyped} \
+		--exclude {input.longrangeLD} \
+		--make-bed \
+		--out {params.proc_data_dir}/genotyped/UKB_imaging_chr{wildcards.chr}_v3_genotyped_nolongrangeLD
 		"""
 
 rule List_NoShortRangeLD_SNPs:
@@ -164,12 +155,14 @@ rule List_NoShortRangeLD_SNPs:
 		plink = plink1_9 ,
 		proc_data_dir = PROC_DATA_DIR
 	shell:
-		" {params.plink} \
+		"""
+		{params.plink} \
 		--bfile {params.proc_data_dir}/genotyped/UKB_imaging_chr{wildcards.chr}_v3_genotyped_nolongrangeLD \
 		--allow-no-sex \
 		--maf 0.05 \
 		--indep-pairwise 50 5 0.2 \
-		--out {params.proc_data_dir}/UKB_imaging_chr{wildcards.chr}_v3 "
+		--out {params.proc_data_dir}/UKB_imaging_chr{wildcards.chr}_v3 
+		"""
 
 rule Extract_NoShortRangeLD_SNPs:
 	input:
@@ -181,18 +174,17 @@ rule Extract_NoShortRangeLD_SNPs:
 		plink = plink1_9,
 		proc_data_dir = PROC_DATA_DIR
 	shell:
-		"\
-        for i in `seq 1 22`; \
-        do \
-        {params.plink} \
-        --bfile {params.proc_data_dir}/genotyped/UKB_imaging_chr${{i}}_v3_genotyped_nolongrangeLD \
+		"""
+		for i in `seq 1 22`; 
+		do 
+		{params.plink} \
+		--bfile {params.proc_data_dir}/genotyped/UKB_imaging_chr${{i}}_v3_genotyped_nolongrangeLD \
 		--extract {params.proc_data_dir}/UKB_imaging_chr${{i}}_v3.prune.in \
 		--allow-no-sex \
 		--make-bed \
-        --out {params.proc_data_dir}/pruned/UKB_imaging_chr${{i}}_v3_pruned \
-        ; \
-        done\
-        "
+		--out {params.proc_data_dir}/pruned/UKB_imaging_chr${{i}}_v3_pruned 
+		done
+		"""
 
 rule Merge_Pruned_Data:
 	input:
@@ -278,12 +270,12 @@ rule PCA:
 	shell:
 		"""
 		python scripts/python/pc_outlier_rm.py \
-        --plink2 {params.plink2} \
-        --bfile {params.bfile} \
-        --out {params.out} \
-        --npc-rm {params.npc_rm} \
-        --nsd-rm {params.nsd_rm}
-        """
+		--plink2 {params.plink2} \
+		--bfile {params.bfile} \
+		--out {params.out} \
+		--npc-rm {params.npc_rm} \
+		--nsd-rm {params.nsd_rm}
+		"""
 	
 # Covariates
 rule Covariates:
@@ -318,13 +310,13 @@ rule Make_BEDFiles_GWAS:
 		awk '{{print $1}}' {input.covar} > {params.proc_data_dir}/BED/samples.txt
 
 		{params.plink} \
-        --bgen {input.bgen} \
-        --sample {input.sample} \
+		--bgen {input.bgen} \
+		--sample {input.sample} \
 		--keep {params.proc_data_dir}/BED/samples.txt \
-        --maf 0.01 \
-        --hwe 1e-10 \
+		--maf 0.01 \
+		--hwe 1e-10 \
 		--make-bed \
-        --out {params.proc_data_dir}/BED/UKB_imaging_chr{wildcards.chr}_v3
+		--out {params.proc_data_dir}/BED/UKB_imaging_chr{wildcards.chr}_v3
 		"""
 
 # Hardy Weinberg files
@@ -343,15 +335,15 @@ rule HW_per_Chr:
 	shell:
 		"""
 		awk '{{print $1,$2}}' {input.covar} > {input.covar}.{wildcards.chr}.sample  
-    
-        {params.plink} \
-        --bgen {input.bgen} \
-        --sample {input.sample} \
-        --keep {input.covar}.{wildcards.chr}.sample \
-        --maf 0.01 \
-        --hardy \
-        --out {params.out_dir}/GWAS_{params.trait}_chr{wildcards.chr}
-        """
+
+		{params.plink} \
+		--bgen {input.bgen} \
+		--sample {input.sample} \
+		--keep {input.covar}.{wildcards.chr}.sample \
+		--maf 0.01 \
+		--hardy \
+		--out {params.out_dir}/GWAS_{params.trait}_chr{wildcards.chr}
+		"""
 
 
 rule Merge_HW_per_Chr:
@@ -362,20 +354,20 @@ rule Merge_HW_per_Chr:
 	shell:
 		"""
 		count=0
-        for f in {input};
-        do 
-        count=$[$count +1];
-        if [ $count -eq 1 ] ;
-        then
-        cat $f  > temp;
-        else
-        cat $f | tail -n +2 >> temp ;
-        fi;
-        done        
-        
-        sed -re '1 s/^#//' temp > {output}
-        rm temp
-        """
+		for f in {input};
+		do 
+		count=$[$count +1];
+		if [ $count -eq 1 ] ;
+		then
+		cat $f  > temp;
+		else
+		cat $f | tail -n +2 >> temp ;
+		fi;
+		done        
+
+		sed -re '1 s/^#//' temp > {output}
+		rm temp
+		"""
 
 
 # Association
@@ -394,10 +386,10 @@ rule GWAS_per_Chr:
 	shell:
 		"""
 		awk '{{print $1,$2}}' {input.covar} > {input.covar}.{wildcards.chr}.sample	
-	
+
 		{params.plink} \
-        --bgen {input.bgen} \
-        --sample {input.sample} \
+		--bgen {input.bgen} \
+		--sample {input.sample} \
 		--keep {input.covar}.{wildcards.chr}.sample \
 		--pheno {input.covar} \
 		--pheno-name {params.trait} \
@@ -419,17 +411,17 @@ rule Merge_GWAS_per_Chr:
 	shell:
 		"""
 		count=0
-        for f in {input};
-        do 
-        count=$[$count +1];
-        if [ $count -eq 1 ] ;
-        then
-        cat $f  > temp;
-        else
-        cat $f | tail -n +2 >> temp ;
-        fi;
-        done		
-		
+		for f in {input};
+		do 
+		count=$[$count +1];
+		if [ $count -eq 1 ] ;
+		then
+		cat $f  > temp;
+		else
+		cat $f | tail -n +2 >> temp ;
+		fi;
+		done		
+
 		sed -re '1 s/^#//' temp > {output}
 		rm temp
 		"""
@@ -476,18 +468,18 @@ rule GWAS_chrpos:
 	shell:
 		"""
 		awk 'BEGIN{{FS=OFS="\\t"}}{{print $1"_"$2,$0}}' {input.GWAS} > {input.GWAS}.chrpos.temp
-        awk 'BEGIN{{FS=OFS="\\t"}}NR==1{{
-            print $0
-        }}NR!=1{{
-        if($4~/^rs*/){{
-            print $0
-        }}else{{
-            $4=$1
-            print $0
-        }}
-        }}' {input.GWAS}.chrpos.temp > {input.GWAS}.chrpos
+		awk 'BEGIN{{FS=OFS="\\t"}}NR==1{{
+			print $0
+		}}NR!=1{{
+		if($4~/^rs*/){{
+			print $0
+		}}else{{
+			$4=$1
+			print $0
+		}}
+		}}' {input.GWAS}.chrpos.temp > {input.GWAS}.chrpos
 
-        rm {input.GWAS}.chrpos.temp
+		rm {input.GWAS}.chrpos.temp
 
 		"""
 
@@ -501,8 +493,8 @@ rule MetaAnalysis_EUR:
 		metal = metal
 	shell:
 		"""
-       	{params.metal} {input.metalfile}
-		 """
+		{params.metal} {input.metalfile}
+		"""
 
 rule MetaAnalysis:
 	input:
@@ -525,19 +517,19 @@ rule Annotate_Meta:
 		meta=RESULTS_DIR + "/metaGWAS_" + TRAIT + "_chrpos.tbl"
 	shell:
 		"""
-        awk 'BEGIN {{OFS=FS="\\t"}}
-        NR==FNR {{
-            a[$4,$7,$8]=$1 OFS $2 OFS $3
+		awk 'BEGIN {{OFS=FS="\\t"}}
+		NR==FNR {{
+			a[$4,$7,$8]=$1 OFS $2 OFS $3
 		}}
-        {{
-        if(($1,toupper($2),toupper($3)) in a){{
-            $13=a[$1,toupper($2),toupper($3)];
-            print     
-        }}else if(($1,toupper($3),toupper($2)) in a){{
+		{{
+		if(($1,toupper($2),toupper($3)) in a){{
+			$13=a[$1,toupper($2),toupper($3)];
+			print     
+		}}else if(($1,toupper($3),toupper($2)) in a){{
 			$13=a[$1,toupper($3),toupper($2)];
 			print
 		}}
-        }}'  {input.GWASchrpos} {input.meta} > {output.meta}
+		}}'  {input.GWASchrpos} {input.meta} > {output.meta}
 		sed -i '1i MarkerName\\tAllele1\\tAllele2\\tWeight\\tZscore\\tP-value\\tDirection\\tHetISq\\tHetChiSq\\tHetDf\\tHetPVal\\tTotalSampleSize\\tCHROM_POS\\tCHROM\\tPOS'  {output.meta} 
 		"""
 
@@ -555,7 +547,7 @@ rule Clumping:
 		if ($6<=5e-8)
 			print $9,$6
 		}}' {input.meta} > {input.meta}.sig
-		
+
 		sed  -i '1i SNP\\tP' {input.meta}.sig	
 
 		chr=1
@@ -569,18 +561,18 @@ rule Clumping:
 		--out {input.meta}.${{chr}}
 		chr=$[$chr +1]
 		done
-	
-        count=0
-        for f in {input.meta}*.clumped 
-        do 
-        count=$[$count +1]
-        if [ $count -eq 1 ] 
-        then 
-        cat $f | head -n -2  > {output.meta_clumped}
-        else
-        cat $f | head -n -2 | sed '1d' >> {output.meta_clumped}
-        fi
-        done
+
+		count=0
+		for f in {input.meta}*.clumped 
+		do 
+		count=$[$count +1]
+		if [ $count -eq 1 ] 
+		then 
+		cat $f | head -n -2  > {output.meta_clumped}
+		else
+		cat $f | head -n -2 | sed '1d' >> {output.meta_clumped}
+		fi
+		done
 
 		"""
 
@@ -603,13 +595,13 @@ rule Regional_Plots:
 		while [[ $i -le $ln ]]
 		do
 			j=$((i-1))
-        	SNP=$(awk 'NR=='f'{{print $3}}' f=$i {input.meta_clumped})
-        	BP=$(awk 'NR=='f'{{print $4}}' f=$i {input.meta_clumped})
-        	CHR=$(awk 'NR=='f'{{print $1}}' f=$i {input.meta_clumped})
+			SNP=$(awk 'NR=='f'{{print $3}}' f=$i {input.meta_clumped})
+			BP=$(awk 'NR=='f'{{print $4}}' f=$i {input.meta_clumped})
+			CHR=$(awk 'NR=='f'{{print $1}}' f=$i {input.meta_clumped})
 
 			let "BP_min=$BP-250000"
 			let "BP_max=$BP+250000"
-	
+
 			for file in {params.ref} 
 			do
 				if [[ $file == *"chr${{CHR}}_3" ]]
@@ -622,7 +614,7 @@ rule Regional_Plots:
 			{params.plink} --bfile ${{reffile}} --ld-snp $SNP --r2 --ld-window-kb 250 --ld-window-r2 0 --ld-window 99999 --out {params.out}/ld_out."$j" 
 			awk '{{if($2='f' && $3>'g' && $3<'h')print}}' f=$CHR g=$BP_min h=$BP_max {input.meta}.chr.bp > {params.out}/ld_out."$j"	
 			((i=i+1))
-        
+
 			R -q --vanilla --args {params.out}/ld_out."$j" $CHR {params.out}/ld_out."$j".ld < scripts/R/regional_plot.R 
 
 

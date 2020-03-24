@@ -150,12 +150,12 @@ rule Extract_genotyped_nolongrangeLD_SNPs:
 		proc_data_dir = PROC_DATA_DIR
 	shell:
 		"""
-        {params.plink} \
-        --bgen {input.bgen} \
-        --sample {input.sample}  \
-        --extract {input.genotyped} \
-        --exclude {input.longrangeLD} \
-        --make-bed \
+		{params.plink} \
+		--bgen {input.bgen} \
+		--sample {input.sample}  \
+		--extract {input.genotyped} \
+		--exclude {input.longrangeLD} \
+		--make-bed \
 		--out {params.proc_data_dir}/genotyped/UKB_imaging_chr{wildcards.chr}_v3_genotyped_nolongrangeLD
 		"""
 
@@ -168,12 +168,14 @@ rule shortrange_Pruning:
 		plink = plink1_9 ,
 		proc_data_dir = PROC_DATA_DIR
 	shell:
-		" {params.plink} \
+		"""
+		{params.plink} \
 		--bfile {params.proc_data_dir}/genotyped/UKB_imaging_chr{wildcards.chr}_v3_genotyped_nolongrangeLD \
 		--allow-no-sex \
 		--maf 0.05 \
 		--indep-pairwise 1000 50 0.05 \
-		--out {params.proc_data_dir}/UKB_imaging_chr{wildcards.chr}_v3 "
+		--out {params.proc_data_dir}/UKB_imaging_chr{wildcards.chr}_v3 
+		"""
 
 rule ExtractPrunedVariants:
 	input:
@@ -185,18 +187,17 @@ rule ExtractPrunedVariants:
 		plink = plink1_9,
 		proc_data_dir = PROC_DATA_DIR
 	shell:
-		"\
-        for i in `seq 1 22`; \
-        do \
-        {params.plink} \
-        --bfile {params.proc_data_dir}/genotyped/UKB_imaging_chr${{i}}_v3_genotyped_nolongrangeLD \
+		"""
+		for i in `seq 1 22`; 
+		do 
+		{params.plink} \
+		--bfile {params.proc_data_dir}/genotyped/UKB_imaging_chr${{i}}_v3_genotyped_nolongrangeLD \
 		--extract {params.proc_data_dir}/UKB_imaging_chr${{i}}_v3.prune.in \
 		--allow-no-sex \
 		--make-bed \
-        --out {params.proc_data_dir}/pruned/UKB_imaging_chr${{i}}_v3_pruned \
-        ; \
-        done\
-        "
+		--out {params.proc_data_dir}/pruned/UKB_imaging_chr${{i}}_v3_pruned 
+		done
+		"""
 
 rule MergePrunedData:
 	input:
@@ -279,12 +280,12 @@ rule PCA:
 	shell:
 		"""
 		python scripts/python/pc_outlier_rm.py \
-        --plink2 {params.plink2} \
-        --bfile {params.bfile} \
-        --out {params.out} \
-        --npc-rm {params.npc_rm} \
-        --nsd-rm {params.nsd_rm}
-        """
+		--plink2 {params.plink2} \
+		--bfile {params.bfile} \
+		--out {params.out} \
+		--npc-rm {params.npc_rm} \
+		--nsd-rm {params.nsd_rm}
+		"""
 
 # Covariates
 rule Covariates:
@@ -334,23 +335,23 @@ rule GWAS:
 			--hwe 1e-10 \
 			--out {params.out_dir}/GWAS_{params.trait}_chr${{chr}};
 		done
-		
+
 		count=0
-        for chr in `seq 1 22`;
-        do 
+		for chr in `seq 1 22`;
+		do 
 		f="{params.out_dir}/GWAS_{params.trait}_chr${{chr}}.{params.trait}.glm.linear"
-        count=$[$count +1];
-        if [ $count -eq 1 ] ;
-        then
-        cat $f  > temp_{params.trait};
-        else
-        cat $f | tail -n +2 >> temp_{params.trait} ;
-        fi;
-        done        
-        
-        sed -re '1 s/^#//' temp_{params.trait} > {output}
-        rm temp_{params.trait}
-		
+		count=$[$count +1];
+		if [ $count -eq 1 ] ;
+		then
+		cat $f  > temp_{params.trait};
+		else
+		cat $f | tail -n +2 >> temp_{params.trait} ;
+		fi;
+		done        
+
+		sed -re '1 s/^#//' temp_{params.trait} > {output}
+		rm temp_{params.trait}
+
 		rm {params.out_dir}/GWAS_{params.trait}_chr*
 		"""
 
@@ -364,30 +365,30 @@ rule Check_INFO:
 	shell:
 		"""
 		if [ -f {output.glm}.temp ]
-        then
-            rm {output.glm}.temp
-        fi
+		then
+			rm {output.glm}.temp
+		fi
 
-        for infofile in {input.variant_info}
-        do
-        awk 'BEGIN {{OFS=FS="\\t"}}
-        NR==FNR {{
-            a[$2,$3,$4,$5]=$1 OFS $6 OFS $7 OFS $8 
-        }}
-        {{
-        if(($3,$2,$5,$4) in a){{
-            $16=a[$3,$2,$5,$4];
-            print     
-            }}
-        }}'  ${{infofile}} {input.glm} >> {output.glm}.temp
-        echo ${{infofile}}
-        done
-    
-        awk '{{if ($19>=0.5) print $0;}}' {output.glm}.temp > {output.glm}
-        sed  -i '1i CHROM\\tPOS\\tID\\tREF\\tALT\\tA1\\tAX\\tA1_FREQ\\tMACH_R2\\tTEST\\tOBS_CT\\tBETA\\tSE\\tT_STAT\\tP\\tSNP_id\\tMAFimp\\tAllele\\tINFO' {output.glm}
+		for infofile in {input.variant_info}
+		do
+		awk 'BEGIN {{OFS=FS="\\t"}}
+		NR==FNR {{
+			a[$2,$3,$4,$5]=$1 OFS $6 OFS $7 OFS $8 
+		}}
+		{{
+		if(($3,$2,$5,$4) in a){{
+			$16=a[$3,$2,$5,$4];
+			print     
+			}}
+		}}'  ${{infofile}} {input.glm} >> {output.glm}.temp
+		echo ${{infofile}}
+		done
 
-        rm {output.glm}.temp
-        """
+		awk '{{if ($19>=0.5) print $0;}}' {output.glm}.temp > {output.glm}
+		sed  -i '1i CHROM\\tPOS\\tID\\tREF\\tALT\\tA1\\tAX\\tA1_FREQ\\tMACH_R2\\tTEST\\tOBS_CT\\tBETA\\tSE\\tT_STAT\\tP\\tSNP_id\\tMAFimp\\tAllele\\tINFO' {output.glm}
+
+		rm {output.glm}.temp
+		"""
 
 # Clumping association results and Regional plots
 rule Clumping:
@@ -402,46 +403,46 @@ rule Clumping:
 	shell:
 		"""
 		awk 'BEGIN{{OFS="\\t"}}{{
-        if ($15<=5e-8)
-            print $1"_"$2,$15
-        }}' {input.glm} > {output.glm_sig}
-        
-        sed  -i '1i SNP\\tP' {output.glm_sig}   
+		if ($15<=5e-8)
+			print $1"_"$2,$15
+		}}' {input.glm} > {output.glm_sig}
+
+		sed  -i '1i SNP\\tP' {output.glm_sig}   
 
 		head {output.glm_sig}
-		
+
 		if [ -s {output.glm_sig} ]
 		then
-	
-        	chr=1
-        	for bfile in {params.ref}
-        	do
-        	{params.plink} \
-        	--bfile ${{bfile}} \
-        	--clump {output.glm_sig} \
-        	--clump-kb 1000 \
-        	--clump-r2 0.1 \
-        	--out {input.glm}.${{chr}}
-        	chr=$[$chr +1]
-        	done
-    
-        	count=0
-        	for f in {input.glm}*.clumped 
-        	do 
-        	count=$[$count +1]
-        	if [ $count -eq 1 ] 
-        	then 
-        	cat $f | head -n -2  > {output.glm_clumped}
-        	else
-        	cat $f | head -n -2 | sed '1d' >> {output.glm_clumped}
-        	fi
+
+			chr=1
+			for bfile in {params.ref}
+			do
+			{params.plink} \
+			--bfile ${{bfile}} \
+			--clump {output.glm_sig} \
+			--clump-kb 1000 \
+			--clump-r2 0.1 \
+			--out {input.glm}.${{chr}}
+			chr=$[$chr +1]
+			done
+
+			count=0
+			for f in {input.glm}*.clumped 
+			do 
+			count=$[$count +1]
+			if [ $count -eq 1 ] 
+			then 
+			cat $f | head -n -2  > {output.glm_clumped}
+			else
+			cat $f | head -n -2 | sed '1d' >> {output.glm_clumped}
+			fi
 			rm $f
-        	done
+			done
 		else
 			touch {output.glm_clumped}
 		fi
 
-        """
+		"""
 
 rule Regional_Plots:
 	input:
@@ -455,37 +456,37 @@ rule Regional_Plots:
 		out = RESULTS_DIR + "/Regional_Plots_{trait}/"
 	shell:
 		"""
-        awk 'BEGIN{{FS=OFS="\\t"}}{{print $1"_"$2,$0}}' {input.glm} > {input.glm}.chr.bp
+		awk 'BEGIN{{FS=OFS="\\t"}}{{print $1"_"$2,$0}}' {input.glm} > {input.glm}.chr.bp
 		ln=$(wc -l {input.glm_clumped} | awk '{{print $1}}')
-        i=2
-        while [[ $i -le $ln ]]
-        do
-            j=$((i-1))
-            SNP=$(awk 'NR=='f'{{print $3}}' f=$i {input.glm_clumped})
-            BP=$(awk 'NR=='f'{{print $4}}' f=$i {input.glm_clumped})
-            CHR=$(awk 'NR=='f'{{print $1}}' f=$i {input.glm_clumped})
+		i=2
+		while [[ $i -le $ln ]]
+		do
+			j=$((i-1))
+			SNP=$(awk 'NR=='f'{{print $3}}' f=$i {input.glm_clumped})
+			BP=$(awk 'NR=='f'{{print $4}}' f=$i {input.glm_clumped})
+			CHR=$(awk 'NR=='f'{{print $1}}' f=$i {input.glm_clumped})
 
-            let "BP_min=$BP-250000"
-            let "BP_max=$BP+250000"
-    
-            for file in {params.ref} 
-            do
-                if [[ $file == *"chr${{CHR}}_3" ]]
-                then
-                    reffile=$file
-                    echo 'found'
-                fi          
-            done    
+			let "BP_min=$BP-250000"
+			let "BP_max=$BP+250000"
 
-            {params.plink} --bfile ${{reffile}} --ld-snp $SNP --r2 --ld-window-kb 250 --ld-window-r2 0 --ld-window 99999 --out {params.out}/ld_out."$j" 
-            awk '{{if($2='f' && $3>'g' && $3<'h')print}}' f=$CHR g=$BP_min h=$BP_max {input.glm}.chr.bp > {params.out}/ld_out."$j" 
-            ((i=i+1))
-        
-            R -q --vanilla --args {params.out}/ld_out."$j" $CHR {params.out}/ld_out."$j".ld < scripts/R/regional_plot.R 
+			for file in {params.ref} 
+			do
+				if [[ $file == *"chr${{CHR}}_3" ]]
+				then
+					reffile=$file
+					echo 'found'
+				fi          
+			done    
 
-        done
+			{params.plink} --bfile ${{reffile}} --ld-snp $SNP --r2 --ld-window-kb 250 --ld-window-r2 0 --ld-window 99999 --out {params.out}/ld_out."$j" 
+			awk '{{if($2='f' && $3>'g' && $3<'h')print}}' f=$CHR g=$BP_min h=$BP_max {input.glm}.chr.bp > {params.out}/ld_out."$j" 
+			((i=i+1))
+
+			R -q --vanilla --args {params.out}/ld_out."$j" $CHR {params.out}/ld_out."$j".ld < scripts/R/regional_plot.R 
+
+		done
 		rm {input.glm}.chr.bp
-        echo 'all done' > {output}  
-        """
+		echo 'all done' > {output}  
+		"""
 
 
