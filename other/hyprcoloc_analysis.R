@@ -144,7 +144,7 @@ for(snp in 1:nrow(sentinels)){
   rsid <- rownames(betas)
   
   # Colocalization analysis
-  results[[sentinel]]=hyprcoloc(betas[,1:3], ses[,1:3], trait.names=traits[1:3], snp.id=rsid)
+  results[[sentinel]]=hyprcoloc(betas, ses, trait.names=traits, snp.id=rsid)
 }
 
 results2=lapply(results, function(x) as.data.frame(x$results))
