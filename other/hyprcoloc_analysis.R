@@ -154,4 +154,12 @@ df <- ldply (results2, data.frame)
 df=df%>%
   filter(traits!="None")
 
-write.csv(df, "~/tables/results_tophits_20_06_2019_hyprcoloc.csv")
+data2=sentinels%>%
+  left_join(WMH_sumstats%>%dplyr::rename("P_WMH"="P-value")%>%select(ID, P_WMH), by=c("rsID"="ID"))%>%
+  left_join(FA_sumstats%>%dplyr::rename("P_FA"="P")%>%select(ID, P_FA), by=c("rsID"="ID"))%>%
+  left_join(MD_sumstats%>%dplyr::rename("P_MD"="P")%>%select(ID, P_MD), by=c("rsID"="ID"))
+
+data2=data2%>%
+  left_join(df, by=c("rsID"=".id"))
+
+write.csv(data2, "~/tables/results_tophits_20_06_2019_hyprcoloc.csv")
