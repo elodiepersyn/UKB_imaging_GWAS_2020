@@ -40,22 +40,6 @@ FILTER_SUMMARY=list()
 
 FILTER_SUMMARY[["Initial_number_of_individuals"]]=nrow(res_ukb)
 
-# Selection of unsuspicious individuals
-
-# Brain MRI measurement completed
-# grep(colnames(res_ukb), pattern="f12188")
-res_ukb$brain_mri_measurement_completeduses_datacoding_21_f12188_2_0=as.factor(res_ukb$brain_mri_measurement_completeduses_datacoding_21_f12188_2_0)
-res_ukb$brain_mri_measuring_methoduses_datacoding_470_f12187_2_0=as.factor(res_ukb$brain_mri_measuring_methoduses_datacoding_470_f12187_2_0)
-res_ukb$believed_safe_to_perform_brain_mri_scanuses_datacoding_634_f12139_2_0=as.factor(res_ukb$believed_safe_to_perform_brain_mri_scanuses_datacoding_634_f12139_2_0)
-
-summary(res_ukb$brain_mri_measurement_completeduses_datacoding_21_f12188_2_0)
-summary(res_ukb$brain_mri_measuring_methoduses_datacoding_470_f12187_2_0)
-summary(res_ukb$believed_safe_to_perform_brain_mri_scanuses_datacoding_634_f12139_2_0)
-
-#res_ukb=res_ukb%>%
-#		filter(!brain_mri_measurement_completed_f12188_2_0=="no" & brain_mri_measuring_method_f12187_2_0=="Direct entry" & !believed_safe_to_perform_brain_mri_scan_f12139_2_0=="No" & is.na(reason_believed_unsafe_to_perform_brain_mri_f12663_2_0) & is.na(reason_brain_mri_not_completed_f12704_2_0) & is.na(reason_brain_mri_not_performed_f12652_2_0))
-
-
 # List of imaging fields to process
 
 fields=fread(FIELDS, header=TRUE)
@@ -170,18 +154,11 @@ intersect_list_ind=Reduce(intersect, list_ind)
 FILTER_SUMMARY[["Number_of_outliers"]]=length(intersect_list_ind)-length(ind_to_keep2)
 FILTER_SUMMARY[["Number_of_individuals_after_removing_outliers"]]=length(intersect_list_ind)
 
-# Exploring description fields
-sub2=res_ukb[ind_to_keep[ind_to_keep2][intersect_list_ind],]%>%
-  select(brain_mri_measurement_completeduses_datacoding_21_f12188_2_0, brain_mri_measuring_methoduses_datacoding_470_f12187_2_0, believed_safe_to_perform_brain_mri_scanuses_datacoding_634_f12139_2_0)
-DESCRIPTION_SUMMARY=summary(sub2)
-
-
 #---------------------------------------------
 # OUTPUTS
 #---------------------------------------------
 write_yaml(as.yaml(level_counts), "removed_codes_summary.yaml")
 write.table(as.matrix(CODE_PER_INDIVIDUAL_SUMMARY), "number_of_codes_in_removed_individuals.txt")
 write_yaml(as.yaml(FILTER_SUMMARY), "filter_summary.txt")
-write.table(as.matrix(DESCRIPTION_SUMMARY), "description_summary.txt")
 ids=matrix(res_ukb[ind_to_keep[ind_to_keep2][intersect_list_ind],]$eid, ncol=1)
 write.table(ids, paste(DIR_PROCESSED_DATA, "/samples/", ROOTNAME, "_",TRAIT,".samples.txt",sep=""), sep="\t", row.names=F, col.names=F, quote=F)

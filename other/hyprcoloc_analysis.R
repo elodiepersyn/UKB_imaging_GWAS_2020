@@ -154,16 +154,4 @@ df <- ldply (results2, data.frame)
 df=df%>%
   filter(traits!="None")
 
-data2$P_WMH=as.numeric(gsub(data2$P_WMH, replacement = "e", pattern="×10"))
-data2$P_FA=as.numeric(gsub(data2$P_FA, replacement = "e", pattern="×10"))
-data2$P_MD=as.numeric(gsub(data2$P_MD, replacement = "e", pattern="×10"))
-data2=data2%>%
-  filter(!is.na(Chr))%>%
-  left_join(df, by=c("Lead.SNP"=".id"))
-write.csv(data2, "~/tables/results_tophits_20_06_2019_hyprcoloc.csv")
-
-data2%>%
-  filter(!is.na(traits) & (grepl("FA", traits) | grepl("WMH", traits) | grepl("MD", traits)))%>%
-  dplyr::select(Lead.SNP)%>%
-  distinct()
-
+write.csv(df, "~/tables/results_tophits_20_06_2019_hyprcoloc.csv")

@@ -140,17 +140,11 @@ notoutliers=which(scalesub>=-6 & scalesub<=6)
 FILTER_SUMMARY[["Number_of_outliers"]]=length(notoutliers)-length(ind_to_keep2)
 FILTER_SUMMARY[["Number_of_individuals_after_removing_outliers"]]=length(notoutliers)
 
-# Exploring description fields
-sub2=res_ukb[ind_to_keep[ind_to_keep2][notoutliers],]%>%
-  select(brain_mri_measurement_completeduses_datacoding_21_f12188_2_0, brain_mri_measuring_methoduses_datacoding_470_f12187_2_0, believed_safe_to_perform_brain_mri_scanuses_datacoding_634_f12139_2_0)
-DESCRIPTION_SUMMARY=summary(sub2)
-
 #---------------------------------------------
 # OUTPUTS
 #---------------------------------------------
 write_yaml(as.yaml(level_counts), "removed_codes_summary.yaml")
 write.table(as.matrix(CODE_PER_INDIVIDUAL_SUMMARY), "number_of_codes_in_removed_individuals.txt")
 write_yaml(as.yaml(FILTER_SUMMARY), "filter_summary.txt")
-write.table(as.matrix(DESCRIPTION_SUMMARY), "description_summary.txt")
 ids=matrix(res_ukb[ind_to_keep[ind_to_keep2][notoutliers],]$eid, ncol=1)
 write.table(ids, paste(DIR_PROCESSED_DATA, "/samples/", ROOTNAME, "_",TRAIT,".samples.txt",sep=""), sep="\t", row.names=F, col.names=F, quote=F)

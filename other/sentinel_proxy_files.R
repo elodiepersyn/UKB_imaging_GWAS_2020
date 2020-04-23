@@ -97,9 +97,8 @@ assoc_clumped=assoc_clumped%>%
 sentinels=assoc_clumped%>%
   dplyr::select(ID,CHROM,POS)%>%
   dplyr::rename(rsID=ID, CHR=CHROM, START=POS)%>%
-  mutate(END=START)%>%
-  filter(grepl("rs",rsID))
-write.table(sentinels,"~/results/results_GWAS_imaging_FA_15.10.2018/PROGEM/sentinels.txt", sep="\t", row.names=FALSE, quote=FALSE, col.names=TRUE)
+  mutate(END=START)
+write.table(sentinels,"~/results/results_GWAS_imaging_FA_15.10.2018/sentinels.txt", sep="\t", row.names=FALSE, quote=FALSE, col.names=TRUE)
 
 #-------------------------------------------
 # getting the proxies.txt file
@@ -140,7 +139,6 @@ proxiesfile3=proxiesfile2%>%
                 PROXY_START=BP_B,
                 r2=R2)%>%
   mutate(PROXY_END=PROXY_START)%>%
-  dplyr::select(PROXY_rsID,PROXY_CHR,PROXY_START,PROXY_END,LEAD_rsID,r2)%>%
-  filter(grepl("rs",PROXY_rsID))
+  dplyr::select(PROXY_rsID,PROXY_CHR,PROXY_START,PROXY_END,LEAD_rsID,r2)
 
-write.table(proxiesfile3,"~/results/results_GWAS_imaging_FA_15.10.2018/PROGEM/proxies.txt", sep="\t", row.names=FALSE, quote=FALSE, col.names=TRUE)
+write.table(proxiesfile3,"~/results/results_GWAS_imaging_FA_15.10.2018/proxies.txt", sep="\t", row.names=FALSE, quote=FALSE, col.names=TRUE)

@@ -27,7 +27,7 @@ magma = config["Programs"]["magma"]
 # scripts from Helena Gaspar to clean summary statistics 
 # https://www.biorxiv.org/content/10.1101/449207v1.article-info
 cleanSumstats_path="/mnt/lustre/groups/ukbiobank/sumstats/scripts/cleanSumstats.py"
-variableBoudaries_path="/mnt/lustre/groups/ukbiobank/sumstats/scripts/variableBoundaries.py"
+variableBoundaries_path="/mnt/lustre/groups/ukbiobank/sumstats/scripts/variableBoundaries.py"
 hapmap_hmc_uniq_path="/mnt/lustre/groups/ukbiobank/sumstats/scripts/hapmap_hmc_uniq.txt"
 
 # Variables ------------------------------------------------------------------------------------------
@@ -78,7 +78,7 @@ rule Clean_Data:
 		trait = TRAIT1_label,
 		dir = OUT_DIR + "/SUMMARYSTATS/" ,
 		cleanSumstats=cleanSumstats_path,
-		variableBoudaries=variableBoudaries_path
+		variableBoundaries=variableBoundaries_path
 	log:
 		out = "log/cleandata.stdout",
 		err = "log/cleandata.stderr"	
@@ -339,11 +339,10 @@ rule FUSION_Studies:
 		trait = TRAIT1_label,
 		GWASN = config["GWASN"],
 		out_dir = OUT_DIR
+	conda:
+		"envs/FUSION_env.yaml"
 	shell:
 		"""
-		source activate FUSION_env
-
-
 		for i in `seq 1 22`
 		do 
 		Rscript {params.FUSION} \
@@ -371,6 +370,8 @@ rule FUSION_GTEx_v6:
 		FUSION = FUSION_assoc_test_R,
 		trait = TRAIT1_label,
 		out_dir = OUT_DIR
+	conda:
+		"envs/FUSION_env.yaml"
 	shell:
 		"""
 		for i in `seq 1 22`
@@ -398,10 +399,10 @@ rule FUSION_GTEx_v7:
 		trait = TRAIT1_label,
 		GWASN = config["GWASN"],
 		out_dir = OUT_DIR
+	conda:
+		"envs/FUSION_env.yaml"
 	shell:
 		"""
-		source activate FUSION_env        
-
 		for i in `seq 1 22`
 		do 
 		Rscript {params.FUSION} \

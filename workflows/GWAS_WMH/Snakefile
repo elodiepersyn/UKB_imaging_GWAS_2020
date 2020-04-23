@@ -66,9 +66,7 @@ rule Sample_QC:
 	output:
 		summary_removed_samples = PROC_DATA_DIR + "/samples/summarytab_removedsamples_" + TRAIT + ".txt",
 		included_samples = PROC_DATA_DIR + "/samples/extractedsamples_" + TRAIT + ".txt",
-		excluded_samples = PROC_DATA_DIR + "/samples/removedsamples_" + TRAIT + ".txt",
-		fig_pca = PROC_DATA_DIR + "/pop_structure/plot_PC_" + TRAIT + "_keptindividuals.png",
-		fig_pca2 = PROC_DATA_DIR + "/pop_structure/plot_PC_" + TRAIT + "_keptindividuals2.png"
+		excluded_samples = PROC_DATA_DIR + "/samples/removedsamples_" + TRAIT + ".txt"
 	params:
 		rootname =  config["rootname_enc"],
 		trait = TRAIT,
